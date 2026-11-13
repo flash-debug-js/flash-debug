@@ -16,7 +16,7 @@ flash-debug CLI
 
 ```text
 Flutter App ──HTTPS──┐
-                     ├── Cloudflare Tunnel ──> Nitro :4317
+                     ├── Cloudflare Tunnel ──> Nitro :4517
 Browser Inspector ──┘                         ├── /
                                                ├── /api/v1/logs
                                                ├── /api/v1/stream

@@ -36,6 +36,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@flash-debug/config": "workspace:*",
     "@flash-debug/inspector": "workspace:*",
     "@flash-debug/types": "workspace:*",
     "nitro": "3.0.261103-rc"

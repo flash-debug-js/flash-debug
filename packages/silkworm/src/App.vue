@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DebugLogLevel, DebugLogSource, DebugLogType } from '@flash-debug/types'
+import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import type { AutoConfig, ConnectionConfig, ManualEventInput, RunnerSnapshot, SilkwormScenario } from './runner/types'
 
@@ -10,7 +11,7 @@ const sources: readonly DebugLogSource[] = ['flutter', 'adb', 'server', 'unknown
 const formats = ['json', 'jsonl', 'yaml', 'ansi', 'text'] as const
 
 const connection = reactive<ConnectionConfig>({
-  baseUrl: 'http://127.0.0.1:4317',
+  baseUrl: `http://127.0.0.1:${DEFAULT_DEBUG_PORT}`,
   token: '',
   clientId: 'silkworm-01',
   deviceId: 'silkworm-device',

@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
+import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
 
 const require = createRequire(import.meta.url)
 type NitroProcess = ChildProcessByStdio<null, Readable, Readable>
@@ -86,7 +87,7 @@ async function waitForHealth(url: string, child: NitroProcess, timeoutMs: number
 /** Start the local Nitro origin that owns the Inspector API. */
 export async function startDebugServer(options: DebugServerOptions = {}): Promise<DebugServer> {
   const host = options.host ?? '127.0.0.1'
-  const port = options.port ?? 4317
+  const port = options.port ?? DEFAULT_DEBUG_PORT
   const rootDir = resolve(options.rootDir ?? process.cwd())
   const localUrl = `http://${host}:${port}`
   const child = spawn(process.execPath, [

@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
 import { startDebugRuntime } from '@flash-debug/core'
 import { cac } from 'cac'
 
@@ -8,7 +9,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
 
   cli
     .command('[root]', 'Start the Flash Debug Inspector')
-    .option('--port <port>', 'Nitro port', { default: 4317 })
+    .option('--port <port>', 'Nitro port', { default: DEFAULT_DEBUG_PORT })
     .option('--host <host>', 'Nitro host', { default: '127.0.0.1' })
     .option('--no-tunnel', 'Start only the local Inspector')
     .option('--mode <mode>', 'Tunnel mode: quick or named', { default: 'quick' })
@@ -36,7 +37,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
   }): Promise<void> {
     const runtime = await startDebugRuntime({
       host: options.host,
-      port: Number(options.port ?? 4317),
+      port: Number(options.port ?? DEFAULT_DEBUG_PORT),
       tunnel: options.tunnel,
       mode: options.mode,
       hostname: options.hostname,

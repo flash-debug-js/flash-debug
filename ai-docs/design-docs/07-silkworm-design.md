@@ -68,7 +68,7 @@ Silkworm 发送的每条日志都是完整事件。它不模拟 AI 内容流，�
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│ Silkworm        Target: http://127.0.0.1:4317    Connected  │
+│ Silkworm        Target: http://127.0.0.1:4517    Connected  │
 │ [Connect] [Test request] [Clear history]                    │
 ├──────────────────────────────┬───────────────────────────────┤
 │ AUTO MODE                    │ MANUAL SEND                   │

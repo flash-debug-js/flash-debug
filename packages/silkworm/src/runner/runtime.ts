@@ -12,6 +12,7 @@ import type {
   SendAttempt,
   SendMode,
 } from './types'
+import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
 import { createScenarioRecord } from '../scenarios'
 import { SeededRandom } from './random'
 import { sendBatch, testTarget, TransportError } from './transport'
@@ -30,7 +31,7 @@ const defaultAutoConfig: AutoConfig = {
 }
 
 const defaultConnection: ConnectionConfig = {
-  baseUrl: 'http://127.0.0.1:4317',
+  baseUrl: `http://127.0.0.1:${DEFAULT_DEBUG_PORT}`,
   token: '',
   clientId: 'silkworm-01',
   deviceId: 'silkworm-device',

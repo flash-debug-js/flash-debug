@@ -1,3 +1,5 @@
+export const DEFAULT_DEBUG_PORT = 4517
+
 export interface FlashDebugConfig {
   server?: {
     host?: string

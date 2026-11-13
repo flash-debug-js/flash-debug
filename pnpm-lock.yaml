@@ -274,6 +274,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@flash-debug/config':
+        specifier: workspace:*
+        version: link:../config
       '@flash-debug/inspector':
         specifier: workspace:*
         version: link:../inspector
@@ -286,6 +289,9 @@ importers:
 
   packages/silkworm:
     dependencies:
+      '@flash-debug/config':
+        specifier: workspace:*
+        version: link:../config
       '@flash-debug/types':
         specifier: workspace:*
         version: link:../types
