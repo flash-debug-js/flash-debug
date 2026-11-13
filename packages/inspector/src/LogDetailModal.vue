@@ -9,6 +9,7 @@ const editorFrame = ref<HTMLIFrameElement>()
 const editorError = ref('')
 const editorReady = ref(false)
 const editorLoading = ref(false)
+const hasOpened = ref(false)
 
 function sendContent(): void {
   const record = props.record
@@ -48,16 +49,24 @@ async function loadEditor(): Promise<void> {
     return
   }
 
+  hasOpened.value = true
   editorLoading.value = true
   await nextTick()
   sendContent()
 }
 
-watch(() => props.record, () => {
+watch(() => props.record, (record) => {
   editorError.value = ''
-  editorReady.value = false
-  editorLoading.value = false
-  void loadEditor()
+  if (!record) {
+    return
+  }
+
+  if (editorReady.value) {
+    sendContent()
+  }
+  else {
+    void loadEditor()
+  }
 }, { immediate: true, flush: 'post' })
 
 onMounted(() => window.addEventListener('message', handleFrameMessage))
@@ -72,8 +81,9 @@ function copyContent(): void {
 </script>
 
 <template>
-  <div v-if="record" class="modal-backdrop" @click.self="emit('close')">
-    <section class="detail-modal" role="dialog" aria-modal="true" aria-label="Log details">
+  <div class="modal-backdrop" :class="{ 'is-hidden': !record }" @click.self="emit('close')">
+    <section class="detail-modal" role="dialog" aria-modal="true" aria-label="Log details" :aria-hidden="!record">
+      <template v-if="record">
       <header class="detail-header">
         <div class="detail-title">
           <span class="level-badge" :class="`level-${record.level}`">{{ record.level }}</span>
@@ -90,6 +100,7 @@ function copyContent(): void {
         <div><dt>Format</dt><dd>{{ detectContentFormat(record) }}</dd></div>
         <div><dt>Event</dt><dd>{{ record.id }}</dd></div>
       </dl>
+      </template>
 
       <div class="detail-editor">
         <div v-if="editorLoading && !editorError" class="editor-loading" role="status" aria-live="polite">
@@ -97,10 +108,10 @@ function copyContent(): void {
           <span>Loading Monaco…</span>
         </div>
         <div v-if="editorError" class="editor-error">Unable to load Monaco: {{ editorError }}</div>
-        <iframe v-if="!editorError" :key="record.id" ref="editorFrame" class="detail-editor-frame" :class="{ 'is-hidden': !editorReady }" src="/monaco.html" title="Read only log editor" @load="sendContent" />
+        <iframe v-if="hasOpened" ref="editorFrame" class="detail-editor-frame" :class="{ 'is-hidden': !editorReady || !!editorError }" src="/monaco.html" title="Read only log editor" @load="sendContent" />
       </div>
 
-      <footer class="detail-footer">
+      <footer v-if="record" class="detail-footer">
         <span>{{ contentFor(record).length.toLocaleString() }} characters</span>
         <button type="button" class="copy-button" @click="copyContent">Copy content</button>
       </footer>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DebugLogLevel, DebugLogRecord } from '@flash-debug/types'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import LogDetailModal from './LogDetailModal.vue'
 import VirtualList from './components/VirtualList.vue'
 
@@ -31,12 +31,27 @@ const filteredLogs = computed(() => {
   })
 })
 
+const sources = computed(() => [...new Set(logs.value.map(record => record.source))])
+const sourceCounts = computed(() => {
+  const counts = new Map<DebugLogRecord['source'], number>()
+  for (const record of logs.value) {
+    counts.set(record.source, (counts.get(record.source) ?? 0) + 1)
+  }
+  return counts
+})
+
 function addRecord(record: DebugLogRecord): void {
   if (logs.value.some(item => item.id === record.id)) {
     return
   }
   logs.value = [...logs.value, record].slice(-5000)
 }
+
+watch(sources, (items) => {
+  if (source.value !== 'all' && !items.includes(source.value)) {
+    source.value = 'all'
+  }
+})
 
 async function loadHistory(): Promise<void> {
   try {
@@ -70,12 +85,50 @@ function connectStream(): void {
   })
 }
 
-onMounted(async () => {
-  await loadHistory()
-  connectStream()
+function handleKeydown(event: KeyboardEvent): void {
+  if (!selected.value) {
+    return
+  }
+
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    selected.value = null
+    return
+  }
+
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+    return
+  }
+
+  const records = filteredLogs.value
+  const currentIndex = records.findIndex(record => record.id === selected.value?.id)
+  if (currentIndex < 0) {
+    return
+  }
+
+  const nextIndex = event.key === 'ArrowUp' ? currentIndex - 1 : currentIndex + 1
+  if (nextIndex < 0 || nextIndex >= records.length) {
+    return
+  }
+
+  const nextRecord = records[nextIndex]
+  if (!nextRecord) {
+    return
+  }
+
+  event.preventDefault()
+  selected.value = nextRecord
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+  void loadHistory().then(connectStream)
 })
 
-onBeforeUnmount(() => eventSource?.close())
+onBeforeUnmount(() => {
+  eventSource?.close()
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
@@ -101,8 +154,7 @@ onBeforeUnmount(() => eventSource?.close())
       <aside class="filters glass">
         <div class="panel-heading"><strong>Sources</strong><span>{{ logs.length }}</span></div>
         <button class="filter-row" :class="{ active: source === 'all' }" type="button" @click="source = 'all'">All sources <small>{{ logs.length }}</small></button>
-        <button class="filter-row" :class="{ active: source === 'flutter' }" type="button" @click="source = 'flutter'">Flutter <small>{{ logs.filter(item => item.source === 'flutter').length }}</small></button>
-        <button class="filter-row" :class="{ active: source === 'adb' }" type="button" @click="source = 'adb'">ADB / Android <small>{{ logs.filter(item => item.source === 'adb').length }}</small></button>
+        <button v-for="item in sources" :key="item" class="filter-row" :class="{ active: source === item }" type="button" @click="source = item">{{ item }} <small>{{ sourceCounts.get(item) ?? 0 }}</small></button>
         <div class="filter-section">
           <span class="filter-label">Level</span>
           <button v-for="item in ['all', 'debug', 'info', 'warning', 'error']" :key="item" class="filter-row" :class="{ active: level === item }" type="button" @click="level = item as typeof level">{{ item }}</button>
@@ -116,7 +168,7 @@ onBeforeUnmount(() => eventSource?.close())
         </header>
         <div v-if="!filteredLogs.length" class="empty-state">
           <h2>Waiting for logs</h2>
-          <p>Flutter, ADB and other debug sources will appear here.</p>
+          <p>Received debug sources will appear here.</p>
         </div>
         <VirtualList v-else :items="filteredLogs" :item-height="38" :item-key="record => record.id" class="log-list">
           <template #default="{ item: record }">
