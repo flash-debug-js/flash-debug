@@ -2,6 +2,7 @@
 import type { DebugLogLevel, DebugLogRecord } from '@flash-debug/types'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import LogDetailModal from './LogDetailModal.vue'
+import VirtualList from './components/VirtualList.vue'
 
 const logs = ref<DebugLogRecord[]>([])
 const selected = ref<DebugLogRecord | null>(null)
@@ -117,15 +118,17 @@ onBeforeUnmount(() => eventSource?.close())
           <h2>Waiting for logs</h2>
           <p>Flutter, ADB and other debug sources will appear here.</p>
         </div>
-        <div v-else class="log-list">
-          <button v-for="record in filteredLogs" :key="record.id" class="log-row" type="button" @click="selected = record">
-            <time>{{ new Date(record.timestamp).toLocaleTimeString() }}</time>
-            <span class="level-badge" :class="`level-${record.level}`">{{ record.level }}</span>
-            <span class="source-badge">{{ record.source }}</span>
-            <span class="log-type">{{ record.type }}</span>
-            <span class="log-message">{{ record.message }}</span>
-          </button>
-        </div>
+        <VirtualList v-else :items="filteredLogs" :item-height="38" :item-key="record => record.id" class="log-list">
+          <template #default="{ item: record }">
+            <button class="log-row" type="button" @click="selected = record">
+              <time>{{ new Date(record.timestamp).toLocaleTimeString() }}</time>
+              <span class="level-badge" :class="`level-${record.level}`">{{ record.level }}</span>
+              <span class="source-badge">{{ record.source }}</span>
+              <span class="log-type">{{ record.type }}</span>
+              <span class="log-message">{{ record.message }}</span>
+            </button>
+          </template>
+        </VirtualList>
       </section>
     </section>
 

@@ -87,7 +87,11 @@ button { color: inherit; }
 .log-panel-header strong { font-size: 14px; }
 .log-panel-header span { color: var(--muted); font-size: 11px; }
 .transport-error { color: #f07878 !important; }
-.log-list { min-height: 0; overflow: auto; padding: 6px; }
+.log-list { min-height: 0; flex: 1; }
+.virtual-list { height: 100%; min-height: 0; overflow: auto; padding: 6px; overscroll-behavior: contain; }
+.virtual-list-spacer { position: relative; width: 100%; }
+.virtual-list-window { position: absolute; top: 0; right: 0; left: 0; }
+.virtual-list-item { width: 100%; }
 .log-row { width: 100%; min-height: 38px; display: grid; grid-template-columns: 82px 68px 72px 84px minmax(0, 1fr); align-items: center; gap: 9px; padding: 5px 10px; border: 0; border-radius: 9px; color: inherit; background: transparent; text-align: left; cursor: pointer; font-family: "Geist Mono", "SFMono-Regular", Consolas, monospace; font-size: 11px; }
 .log-row:hover { background: var(--surface-hover); }
 .log-row time { color: var(--muted); }
