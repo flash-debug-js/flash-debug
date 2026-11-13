@@ -1,56 +1,51 @@
 <script setup lang="ts">
 import type { DebugLogLevel, DebugLogRecord } from '@flash-debug/types'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import LogDetailModal from './LogDetailModal.vue'
 import VirtualList from './components/VirtualList.vue'
+import { createLogWorkerClient } from './worker/log-worker-client'
+import type { LogListItem, LogSnapshot } from './worker/log-worker-types'
+import { createEmptyLogSnapshot } from './worker/log-worker-types'
 
-const logs = ref<DebugLogRecord[]>([])
-const selected = ref<DebugLogRecord | null>(null)
+const logSnapshot = shallowRef<LogSnapshot>(createEmptyLogSnapshot())
+const selected = shallowRef<DebugLogRecord | null>(null)
+const selectedId = ref<string | null>(null)
 const query = ref('')
 const level = ref<'all' | DebugLogLevel>('all')
 const source = ref<'all' | DebugLogRecord['source']>('all')
 const connected = ref(false)
 const error = ref('')
+const workerClient = createLogWorkerClient({
+  onError: (cause) => {
+    error.value = cause instanceof Error ? cause.message : String(cause)
+  },
+})
+const unsubscribeWorker = workerClient.subscribe((snapshot) => {
+  logSnapshot.value = snapshot
+})
 let eventSource: EventSource | undefined
 
-const filteredLogs = computed(() => {
-  const needle = query.value.trim().toLowerCase()
-  return logs.value.filter((record) => {
-    if (level.value !== 'all' && record.level !== level.value) {
-      return false
-    }
-    if (source.value !== 'all' && record.source !== source.value) {
-      return false
-    }
-    if (!needle) {
-      return true
-    }
-    return [record.message, record.tag, record.deviceId, record.type]
-      .filter(Boolean)
-      .some(value => value!.toLowerCase().includes(needle))
-  })
-})
-
-const sources = computed(() => [...new Set(logs.value.map(record => record.source))])
-const sourceCounts = computed(() => {
-  const counts = new Map<DebugLogRecord['source'], number>()
-  for (const record of logs.value) {
-    counts.set(record.source, (counts.get(record.source) ?? 0) + 1)
-  }
-  return counts
-})
+const filteredLogs = computed(() => logSnapshot.value.items)
+const sourceOptions = computed(() => logSnapshot.value.sources.map(item => item.value))
 
 function addRecord(record: DebugLogRecord): void {
-  if (logs.value.some(item => item.id === record.id)) {
-    return
-  }
-  logs.value = [...logs.value, record].slice(-5000)
+  workerClient.enqueue(record)
 }
 
-watch(sources, (items) => {
+watch(sourceOptions, (items) => {
   if (source.value !== 'all' && !items.includes(source.value)) {
     source.value = 'all'
   }
+})
+
+watch([query, level, source], ([nextQuery, nextLevel, nextSource]) => {
+  void workerClient.setFilter({
+    query: nextQuery,
+    level: nextLevel,
+    source: nextSource,
+  }).catch((cause: unknown) => {
+    error.value = cause instanceof Error ? cause.message : String(cause)
+  })
 })
 
 async function loadHistory(): Promise<void> {
@@ -60,8 +55,9 @@ async function loadHistory(): Promise<void> {
       throw new Error(`HTTP ${response.status}`)
     }
     const payload = await response.json() as { items?: Array<{ record: DebugLogRecord }> }
-    for (const item of payload.items ?? []) {
-      addRecord(item.record)
+    const records = (payload.items ?? []).map(item => item.record)
+    if (records.length) {
+      await workerClient.appendBatch(records)
     }
   }
   catch (cause) {
@@ -86,13 +82,13 @@ function connectStream(): void {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
-  if (!selected.value) {
+  if (!selectedId.value) {
     return
   }
 
   if (event.key === 'Escape') {
     event.preventDefault()
-    selected.value = null
+    closeRecord()
     return
   }
 
@@ -101,7 +97,7 @@ function handleKeydown(event: KeyboardEvent): void {
   }
 
   const records = filteredLogs.value
-  const currentIndex = records.findIndex(record => record.id === selected.value?.id)
+  const currentIndex = records.findIndex(record => record.id === selectedId.value)
   if (currentIndex < 0) {
     return
   }
@@ -117,7 +113,29 @@ function handleKeydown(event: KeyboardEvent): void {
   }
 
   event.preventDefault()
-  selected.value = nextRecord
+  void openRecord(nextRecord)
+}
+
+async function openRecord(item: LogListItem): Promise<void> {
+  const requestId = item.id
+  selectedId.value = requestId
+  try {
+    const record = await workerClient.getRecord(requestId)
+    if (selectedId.value === requestId) {
+      selected.value = record
+    }
+  }
+  catch (cause) {
+    if (selectedId.value === requestId) {
+      selected.value = null
+      error.value = cause instanceof Error ? cause.message : String(cause)
+    }
+  }
+}
+
+function closeRecord(): void {
+  selectedId.value = null
+  selected.value = null
 }
 
 onMounted(() => {
@@ -128,6 +146,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   eventSource?.close()
   window.removeEventListener('keydown', handleKeydown)
+  unsubscribeWorker()
+  workerClient.dispose()
 })
 </script>
 
@@ -144,7 +164,7 @@ onBeforeUnmount(() => {
         <kbd>/</kbd>
       </label>
       <div class="header-actions">
-        <span class="stats">{{ filteredLogs.length }} logs</span>
+        <span class="stats">{{ logSnapshot.total }} logs</span>
         <span class="connection-dot" :class="{ online: connected }" />
         <span class="stats">{{ connected ? 'Live' : 'Offline' }}</span>
       </div>
@@ -152,9 +172,9 @@ onBeforeUnmount(() => {
 
     <section class="workspace">
       <aside class="filters glass">
-        <div class="panel-heading"><strong>Sources</strong><span>{{ logs.length }}</span></div>
-        <button class="filter-row" :class="{ active: source === 'all' }" type="button" @click="source = 'all'">All sources <small>{{ logs.length }}</small></button>
-        <button v-for="item in sources" :key="item" class="filter-row" :class="{ active: source === item }" type="button" @click="source = item">{{ item }} <small>{{ sourceCounts.get(item) ?? 0 }}</small></button>
+        <div class="panel-heading"><strong>Sources</strong><span>{{ logSnapshot.stored }}</span></div>
+        <button class="filter-row" :class="{ active: source === 'all' }" type="button" @click="source = 'all'">All sources <small>{{ logSnapshot.stored }}</small></button>
+        <button v-for="item in logSnapshot.sources" :key="item.value" class="filter-row" :class="{ active: source === item.value }" type="button" @click="source = item.value">{{ item.value }} <small>{{ item.count }}</small></button>
         <div class="filter-section">
           <span class="filter-label">Level</span>
           <button v-for="item in ['all', 'debug', 'info', 'warning', 'error']" :key="item" class="filter-row" :class="{ active: level === item }" type="button" @click="level = item as typeof level">{{ item }}</button>
@@ -172,7 +192,7 @@ onBeforeUnmount(() => {
         </div>
         <VirtualList v-else :items="filteredLogs" :item-height="38" :item-key="record => record.id" class="log-list">
           <template #default="{ item: record }">
-            <button class="log-row" type="button" @click="selected = record">
+            <button class="log-row" type="button" @click="void openRecord(record)">
               <time>{{ new Date(record.timestamp).toLocaleTimeString() }}</time>
               <span class="level-badge" :class="`level-${record.level}`">{{ record.level }}</span>
               <span class="source-badge">{{ record.source }}</span>
@@ -184,6 +204,6 @@ onBeforeUnmount(() => {
       </section>
     </section>
 
-    <LogDetailModal :record="selected" @close="selected = null" />
+    <LogDetailModal :record="selected" @close="closeRecord" />
   </main>
 </template>

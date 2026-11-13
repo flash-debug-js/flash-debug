@@ -246,6 +246,9 @@ importers:
       '@shikijs/themes':
         specifier: ^4.6.0
         version: 4.6.0
+      comlink:
+        specifier: ^4.4.2
+        version: 4.4.2
       modern-monaco:
         specifier: ^0.4.2
         version: 0.4.2(typescript@6.0.3)
@@ -1549,6 +1552,9 @@ packages:
 
   citty@0.1.6:
     resolution: {integrity: sha512-tskPPKEs8D2KPafUypv2gxwJP8h/OaJmC82QQGGDQcHvXX43xF2VDACcJVmZ0EuSxkpO9Kc4MlrA3q0+FG58AQ==}
+
+  comlink@4.4.2:
+    resolution: {integrity: sha512-OxGdvBmJuNKSCMO4NTl1L47VRp6xn2wG4F/2hYzB6tiCb709otOxtEYCSvK80PtjODfXXZu8ds+Nw5kVCjqd2g==}
 
   commander@11.1.0:
     resolution: {integrity: sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==}
@@ -4206,6 +4212,8 @@ snapshots:
   citty@0.1.6:
     dependencies:
       consola: 3.4.2
+
+  comlink@4.4.2: {}
 
   commander@11.1.0: {}
 
