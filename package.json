@@ -12,7 +12,8 @@
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "lint": "eslint --cache",
-    "dev": "pnpm --filter @flash-debug/inspector dev"
+    "dev": "pnpm --filter @flash-debug/inspector dev",
+    "dev:silkworm": "pnpm --filter @flash-debug/silkworm dev"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^10.0.0",

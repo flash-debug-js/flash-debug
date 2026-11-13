@@ -1,0 +1,23 @@
+{
+  "name": "@flash-debug/silkworm",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "pnpm run build:ui && nitro build",
+    "build:ui": "vite build",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@flash-debug/types": "workspace:*",
+    "nitro": "3.0.261103-rc",
+    "vue": "^3.5.45"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.11",
+    "vite": "^8.3.8",
+    "vue-tsc": "^3.3.14"
+  }
+}

@@ -284,6 +284,28 @@ importers:
         specifier: 3.0.261103-rc
         version: 3.0.261103-rc
 
+  packages/silkworm:
+    dependencies:
+      '@flash-debug/types':
+        specifier: workspace:*
+        version: link:../types
+      nitro:
+        specifier: 3.0.261103-rc
+        version: 3.0.261103-rc
+      vue:
+        specifier: ^3.5.45
+        version: 3.5.45(typescript@6.0.3)
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.11
+        version: 6.0.11(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))(vue@3.5.45(typescript@6.0.3))
+      vite:
+        specifier: ^8.3.8
+        version: 8.3.8(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
+      vue-tsc:
+        specifier: ^3.3.14
+        version: 3.3.14(typescript@6.0.3)
+
   packages/types: {}
 
 packages:
