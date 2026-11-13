@@ -157,6 +157,9 @@ export class SilkwormRuntime {
     if (this.autoStatus === 'running' || this.autoStatus === 'starting') {
       return this.snapshot()
     }
+    if (!this.connectionState.connected) {
+      throw new Error('Connect to a target before starting Auto Mode')
+    }
 
     this.autoConfig = {
       ...this.autoConfig,
@@ -317,6 +320,11 @@ export class SilkwormRuntime {
           connected: false,
           lastStatus: attempt.statusCode,
           lastError: attempt.error,
+        }
+        if (mode === 'auto') {
+          this.clearAutoTimers()
+          this.autoPending = []
+          this.autoStatus = 'failed'
         }
       }
       finally {

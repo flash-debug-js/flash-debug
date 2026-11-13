@@ -54,6 +54,7 @@ const snapshot = ref<RunnerSnapshot>({
 })
 const message = ref('')
 const error = ref('')
+const busy = ref(false)
 const manualBatchSize = ref(1)
 const duplicateManualId = ref(false)
 const previewOpen = ref(false)
@@ -76,9 +77,9 @@ function applySnapshot(next: RunnerSnapshot): void {
   Object.assign(auto, next.auto.config)
 }
 
-async function request<T extends { snapshot?: RunnerSnapshot }>(path: string, body?: unknown): Promise<T> {
+async function request<T extends { snapshot?: RunnerSnapshot }>(path: string, body?: unknown, method?: 'GET' | 'POST'): Promise<T> {
   const response = await fetch(path, {
-    method: body === undefined ? 'GET' : 'POST',
+    method: method ?? (body === undefined ? 'GET' : 'POST'),
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
@@ -101,7 +102,7 @@ async function connect(): Promise<void> {
 
 async function testConnection(): Promise<void> {
   await runAction(async () => {
-    const payload = await request<{ ok: boolean, snapshot: RunnerSnapshot, error?: string }>('/api/silkworm/test')
+    const payload = await request<{ ok: boolean, snapshot: RunnerSnapshot, error?: string }>('/api/silkworm/test', undefined, 'POST')
     message.value = payload.ok ? `Health check passed in ${payload.snapshot.connection.lastLatencyMs ?? 0}ms` : payload.error ?? 'Health check failed'
   })
 }
@@ -115,14 +116,14 @@ async function startAuto(): Promise<void> {
 
 async function pauseAuto(): Promise<void> {
   await runAction(async () => {
-    await request('/api/silkworm/auto/pause')
+    await request('/api/silkworm/auto/pause', undefined, 'POST')
     message.value = 'Auto mode paused'
   })
 }
 
 async function stopAuto(): Promise<void> {
   await runAction(async () => {
-    await request('/api/silkworm/auto/stop')
+    await request('/api/silkworm/auto/stop', undefined, 'POST')
     message.value = 'Auto mode stopped'
   })
 }
@@ -183,18 +184,22 @@ function resetManual(): void {
 
 async function clearHistory(): Promise<void> {
   await runAction(async () => {
-    await request('/api/silkworm/history/clear')
+    await request('/api/silkworm/history/clear', undefined, 'POST')
     message.value = 'History cleared'
   })
 }
 
 async function runAction(action: () => Promise<void>): Promise<void> {
   error.value = ''
+  busy.value = true
   try {
     await action()
   }
   catch (cause) {
     error.value = cause instanceof Error ? cause.message : String(cause)
+  }
+  finally {
+    busy.value = false
   }
 }
 
@@ -235,8 +240,8 @@ onBeforeUnmount(() => stream?.close())
         <small>{{ connection.baseUrl }}</small>
       </div>
       <div class="top-actions">
-        <button class="button secondary" type="button" @click="testConnection">Test request</button>
-        <button class="button primary" type="button" @click="connect">Connect</button>
+        <button class="button secondary" type="button" :disabled="busy" @click="testConnection">{{ busy ? 'Working…' : 'Test request' }}</button>
+        <button class="button primary" type="button" :disabled="busy" @click="connect">Connect</button>
       </div>
     </header>
 
@@ -249,6 +254,7 @@ onBeforeUnmount(() => stream?.close())
         <label class="field"><span>Device ID</span><input v-model="connection.deviceId" type="text" /></label>
         <label class="field"><span>Default source</span><select v-model="connection.source"><option v-for="item in sources" :key="item" :value="item">{{ item }}</option></select></label>
       </div>
+      <div v-if="message || error" class="connection-feedback" :class="{ failed: error }">{{ error || message }}</div>
     </section>
 
     <section class="control-grid">
@@ -265,9 +271,10 @@ onBeforeUnmount(() => stream?.close())
         </div>
         <label class="check-row"><input v-model="auto.flushErrors" type="checkbox" /><span>Flush error events immediately</span></label>
         <div class="button-row">
-          <button class="button primary" type="button" :disabled="autoRunning" @click="startAuto">{{ autoPaused ? 'Resume' : 'Start' }}</button>
-          <button class="button secondary" type="button" :disabled="!autoRunning" @click="pauseAuto">Pause</button>
-          <button class="button danger" type="button" :disabled="snapshot.auto.status === 'idle'" @click="stopAuto">Stop</button>
+          <button class="button primary" type="button" :disabled="busy || !connected || autoRunning" @click="startAuto">{{ autoPaused ? 'Resume' : 'Start' }}</button>
+          <button class="button secondary" type="button" :disabled="busy || !autoRunning" @click="pauseAuto">Pause</button>
+          <button class="button danger" type="button" :disabled="busy || snapshot.auto.status === 'idle'" @click="stopAuto">Stop</button>
+          <span v-if="!connected" class="control-hint">Connect to a target before starting</span>
         </div>
       </article>
 
