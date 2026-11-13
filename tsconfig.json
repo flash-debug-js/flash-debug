@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "moduleDetection": "force",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "paths": {
+      "@flash-debug/client": ["./packages/client/src/index.ts"],
+      "@flash-debug/config": ["./packages/config/src/index.ts"],
+      "@flash-debug/core": ["./packages/core/src/index.ts"],
+      "@flash-debug/logger-adb": ["./packages/logger-adb/src/index.ts"],
+      "@flash-debug/inspector": ["./packages/inspector/src/main.ts"],
+      "@flash-debug/server": ["./packages/server/src/index.ts"],
+      "@flash-debug/types": ["./packages/types/src/index.ts"],
+      "@flash-debug/cli": ["./packages/cli/src/index.ts"],
+      "flash-debug": ["./packages/flash-debug/src/index.ts"]
+    },
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
+  },
+  "include": ["packages/**/*.ts"],
+  "exclude": ["**/dist/**", "**/node_modules/**"]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "flash-debug",
+  "type": "module",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/flash-debug-js/flash-debug#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flash-debug-js/flash-debug.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./config": {
+      "types": "./dist/config.d.mts",
+      "import": "./dist/config.mjs",
+      "default": "./dist/config.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "bin": {
+    "flash-debug": "./bin/flash-debug.mjs"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "scripts": {
+    "build": "unbuild",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@flash-debug/cli": "workspace:*",
+    "@flash-debug/config": "workspace:*"
+  }
+}

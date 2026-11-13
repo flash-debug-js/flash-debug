@@ -1,0 +1,7 @@
+node_modules/
+.pnpm-store/
+dist/
+.output/
+.eslintcache
+coverage/
+*.log
