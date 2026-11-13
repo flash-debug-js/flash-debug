@@ -81,7 +81,7 @@ onBeforeUnmount(() => eventSource?.close())
   <main class="app-shell">
     <header class="topbar glass">
       <div class="brand">
-        <span class="brand-mark">F</span>
+        <img class="brand-mark" src="/icons/inspector/icon-128.png" alt="" aria-hidden="true" />
         <div><strong>Flash Debug</strong><span>Inspector</span></div>
       </div>
       <label class="search">

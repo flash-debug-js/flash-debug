@@ -56,7 +56,7 @@ button { color: inherit; }
 
 .brand, .brand > div, .header-actions, .detail-title, .log-panel-header, .panel-heading, .connect-row { display: flex; align-items: center; }
 .brand { gap: 10px; }
-.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: white; background: linear-gradient(140deg, var(--primary), var(--primary-vivid)); box-shadow: 0 7px 20px var(--primary-ring); font-weight: 800; }
+.brand-mark { display: block; flex: none; width: 34px; height: 34px; object-fit: contain; }
 .brand > div { align-items: baseline; gap: 7px; }
 .brand strong { font-size: 15px; letter-spacing: -.02em; }
 .brand span { color: var(--muted); font-size: 12px; }
