@@ -96,14 +96,20 @@ async function request<T extends { snapshot?: RunnerSnapshot }>(path: string, bo
 async function connect(): Promise<void> {
   await runAction(async () => {
     const payload = await request<{ ok: boolean, snapshot: RunnerSnapshot, error?: string }>('/api/silkworm/connect', connection)
-    message.value = payload.ok ? 'Connected to target' : payload.error ?? 'Target is unavailable'
+    if (!payload.ok) {
+      throw new Error(payload.error ?? 'Target is unavailable')
+    }
+    message.value = 'Connected to target'
   })
 }
 
 async function testConnection(): Promise<void> {
   await runAction(async () => {
     const payload = await request<{ ok: boolean, snapshot: RunnerSnapshot, error?: string }>('/api/silkworm/test', undefined, 'POST')
-    message.value = payload.ok ? `Health check passed in ${payload.snapshot.connection.lastLatencyMs ?? 0}ms` : payload.error ?? 'Health check failed'
+    if (!payload.ok) {
+      throw new Error(payload.error ?? 'Health check failed')
+    }
+    message.value = `Health check passed in ${payload.snapshot.connection.lastLatencyMs ?? 0}ms`
   })
 }
 
