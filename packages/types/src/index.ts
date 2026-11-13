@@ -2,11 +2,18 @@ export type DebugLogLevel = 'debug' | 'info' | 'warning' | 'error'
 
 export type DebugLogSource = 'flutter' | 'adb' | 'server' | 'unknown'
 
+export type DebugLogType = 'log' | 'network' | 'exception' | 'performance' | 'event'
+
+export type DebugContentFormat = 'json' | 'jsonc' | 'jsonl' | 'yaml' | 'ansi' | 'text'
+
 export interface DebugLogRecord {
   id: string
   timestamp: string
   level: DebugLogLevel
+  type: DebugLogType
   message: string
+  content?: string
+  contentFormat?: DebugContentFormat
   source: DebugLogSource
   tag?: string
   deviceId?: string
@@ -14,6 +21,7 @@ export interface DebugLogRecord {
   error?: string
   stackTrace?: string
   attributes?: Record<string, unknown>
+  metadata?: Record<string, unknown>
 }
 
 export interface DebugDevice {
@@ -34,12 +42,12 @@ export interface DebugClientSession {
 export interface DebugClientAdapter {
   readonly id: string
   readonly capabilities: readonly string[]
-  listDevices(options?: { signal?: AbortSignal }): Promise<DebugDevice[]>
-  startLogs(options: {
+  listDevices: (options?: { signal?: AbortSignal }) => Promise<DebugDevice[]>
+  startLogs: (options: {
     deviceId: string
     onRecord: (record: DebugLogRecord) => void
     signal?: AbortSignal
-  }): Promise<DebugClientSession>
+  }) => Promise<DebugClientSession>
 }
 
 export interface DebugClientEventMap {

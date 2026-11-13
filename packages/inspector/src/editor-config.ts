@@ -6,7 +6,7 @@ export const INSPECTOR_EDITOR_LANGUAGES = [
   'jsonl',
   'yaml',
   'ansi',
-  'text'
+  'text',
 ] as const
 
 export const INSPECTOR_EDITOR_OPTIONS = {
@@ -18,7 +18,7 @@ export const INSPECTOR_EDITOR_OPTIONS = {
   wordWrap: 'off' as const,
   renderWhitespace: 'selection' as const,
   padding: { top: 12, bottom: 12 },
-  automaticLayout: true
+  automaticLayout: true,
 }
 
 export type InspectorEditorLanguage = typeof INSPECTOR_EDITOR_LANGUAGES[number]

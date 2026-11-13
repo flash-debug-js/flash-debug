@@ -24,7 +24,9 @@
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "files": [
-    "dist"
+    "dist",
+    "server",
+    "nitro.config.ts"
   ],
   "engines": {
     "node": ">=22.14.0"

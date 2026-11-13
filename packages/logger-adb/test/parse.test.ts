@@ -4,7 +4,7 @@ import { parseAdbDevices, parseLogcatLine } from '../src'
 describe('adb protocol parsing', () => {
   it('parses online devices', () => {
     expect(parseAdbDevices('List of devices attached\nabc123\tdevice product:foo model:Pixel_8\n')).toEqual([
-      expect.objectContaining({ id: 'abc123', state: 'online', name: 'Pixel 8' })
+      expect.objectContaining({ id: 'abc123', state: 'online', name: 'Pixel 8' }),
     ])
   })
 
@@ -14,7 +14,7 @@ describe('adb protocol parsing', () => {
       level: 'error',
       tag: 'DemoTag',
       message: 'failed',
-      deviceId: 'abc123'
+      deviceId: 'abc123',
     }))
   })
 })

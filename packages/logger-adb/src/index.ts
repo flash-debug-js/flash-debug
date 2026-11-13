@@ -1,8 +1,14 @@
 import type { DebugClientAdapter, DebugClientSession, DebugDevice, DebugLogRecord } from '@flash-debug/types'
+import type { Buffer } from 'node:buffer'
+import { execFile, spawn } from 'node:child_process'
+import process from 'node:process'
+import { promisify } from 'node:util'
 
 export interface AdbAdapterOptions {
   adbPath?: string
 }
+
+const execFileAsync = promisify(execFile)
 
 const LOG_LEVELS = {
   V: 'debug',
@@ -10,7 +16,7 @@ const LOG_LEVELS = {
   I: 'info',
   W: 'warning',
   E: 'error',
-  F: 'error'
+  F: 'error',
 } as const
 
 export function parseAdbDevices(output: string): DebugDevice[] {
@@ -24,7 +30,7 @@ export function parseAdbDevices(output: string): DebugDevice[] {
       const metadata = Object.fromEntries(
         metadataParts
           .map(part => part.split(':', 2))
-          .filter(([key, value]) => Boolean(key && value)) as Array<[string, string]>
+          .filter(([key, value]) => Boolean(key && value)) as Array<[string, string]>,
       )
       return {
         id,
@@ -38,7 +44,7 @@ export function parseAdbDevices(output: string): DebugDevice[] {
             : state === 'unauthorized'
               ? 'unauthorized' as const
               : 'unknown' as const,
-        metadata
+        metadata,
       }
     })
     .filter(device => device.id.length > 0)
@@ -46,27 +52,42 @@ export function parseAdbDevices(output: string): DebugDevice[] {
 
 /** Parse the common `adb logcat -v threadtime` shape into the shared protocol. */
 export function parseLogcatLine(line: string, deviceId?: string): DebugLogRecord | undefined {
-  const match = /^(\d\d-\d\d\s+\d\d:\d\d:\d\d\.\d+)\s+\d+\s+\d+\s+([VDIWEF])\s+([^:]+):\s?(.*)$/.exec(line.trim())
-  if (!match) {
+  const trimmed = line.trim()
+  const parts = trimmed.split(/\s+/)
+  if (parts.length < 6) {
     return undefined
   }
 
-  const [, rawTimestamp, rawLevel, rawTag, message = ''] = match
-  if (!rawTimestamp || !rawLevel || !rawTag) {
+  const rawTimestamp = `${parts[0]} ${parts[1]}`
+  const rawLevel = parts[4]
+  if (!rawLevel || !/^[VDIWEF]$/.test(rawLevel)) {
     return undefined
   }
 
   const level = LOG_LEVELS[rawLevel as keyof typeof LOG_LEVELS] ?? 'info'
   const year = new Date().getFullYear()
   const timestamp = new Date(`${year}-${rawTimestamp.replace(' ', 'T')}`).toISOString()
+  const levelIndex = trimmed.indexOf(` ${rawLevel} `)
+  const payload = levelIndex >= 0
+    ? trimmed.slice(levelIndex + rawLevel.length + 2)
+    : ''
+  const separator = payload.indexOf(':')
+  const rawTag = separator >= 0
+    ? payload.slice(0, separator).trim()
+    : 'logcat'
+  const message = separator >= 0
+    ? payload.slice(separator + 1).trimStart()
+    : payload
+
   return {
     id: `${deviceId ?? 'adb'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     timestamp,
     level,
+    type: 'log',
     source: 'adb',
     deviceId,
     tag: rawTag.trim(),
-    message
+    message,
   }
 }
 
@@ -75,7 +96,90 @@ export function parseLogcatLine(line: string, deviceId?: string): DebugLogRecord
  * package so the generic client package never knows about adb or logcat.
  */
 export function createAdbAdapter(_options: AdbAdapterOptions = {}): DebugClientAdapter {
-  throw new Error('ADB process integration is not implemented yet')
+  const adbPath = _options.adbPath ?? 'adb'
+
+  return {
+    id: 'adb',
+    capabilities: ['devices', 'logcat'],
+
+    async listDevices(options = {}): Promise<DebugDevice[]> {
+      const result = await execFileAsync(adbPath, ['devices', '-l'], {
+        encoding: 'utf8',
+        windowsHide: true,
+        signal: options.signal,
+      })
+      return parseAdbDevices(result.stdout)
+    },
+
+    async startLogs({ deviceId, onRecord, signal }): Promise<DebugClientSession> {
+      const child = spawn(adbPath, [
+        '-s',
+        deviceId,
+        'logcat',
+        '-v',
+        'threadtime',
+      ], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      })
+      let buffered = ''
+      const emitLines = (chunk: Buffer) => {
+        buffered += chunk.toString()
+        const lines = buffered.split(/\r?\n/)
+        buffered = lines.pop() ?? ''
+        for (const line of lines) {
+          const record = parseLogcatLine(line, deviceId)
+          if (record) {
+            onRecord(record)
+          }
+        }
+      }
+      child.stdout.on('data', emitLines)
+
+      const stop = async (): Promise<void> => {
+        if (child.exitCode !== null) {
+          return
+        }
+        await new Promise<void>((resolve) => {
+          child.once('exit', () => resolve())
+          if (process.platform === 'win32' && child.pid) {
+            spawn('taskkill', [
+              '/PID',
+              String(child.pid),
+              '/T',
+              '/F',
+            ], { windowsHide: true, stdio: 'ignore' })
+          }
+          else {
+            child.kill('SIGTERM')
+          }
+          setTimeout(resolve, 5000).unref()
+        })
+      }
+
+      if (signal) {
+        if (signal.aborted) {
+          await stop()
+        }
+        else {
+          signal.addEventListener('abort', () => {
+            void stop()
+          }, { once: true })
+        }
+      }
+
+      return {
+        id: `adb:${deviceId}:${Date.now()}`,
+        device: {
+          id: deviceId,
+          platform: 'android',
+          transport: 'adb',
+          state: 'online',
+        },
+        stop,
+      }
+    },
+  }
 }
 
 export type { DebugClientAdapter, DebugClientSession, DebugDevice, DebugLogRecord } from '@flash-debug/types'
