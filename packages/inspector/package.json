@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@flash-debug/types": "workspace:*",
+    "@shikijs/langs": "^4.6.0",
+    "@shikijs/themes": "^4.6.0",
+    "modern-monaco": "^0.4.2",
     "vue": "^3.5.45"
   },
   "devDependencies": {

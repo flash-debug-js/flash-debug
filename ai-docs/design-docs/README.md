@@ -11,6 +11,7 @@
 | [03-client-adapters.md](./03-client-adapters.md) | client 抽象、ADB 适配器和未来扩展 |
 | [04-log-protocol.md](./04-log-protocol.md) | 日志事件、上传和实时推送协议 |
 | [05-runtime-flow.md](./05-runtime-flow.md) | `npx flash-debug` 启动时序和清理规则 |
+| [06-inspector-design.md](./06-inspector-design.md) | Inspector 页面信息架构、布局、状态和交互 |
 | [12-roadmap.md](./12-roadmap.md) | 分阶段实现计划 |
 
 ## 核心决策
