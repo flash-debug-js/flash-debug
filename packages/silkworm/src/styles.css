@@ -49,6 +49,9 @@ button { color: inherit; }
 .field.wide { grid-column: span 2; }
 .field span { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
 .field input, .field select, .field textarea { width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 9px; outline: none; color: inherit; background: rgb(127 127 127 / 7%); padding: 8px 9px; font-size: 12px; }
+.field select { color-scheme: dark; }
+.field select option { color: #ececf2; background: var(--panel-strong); }
+.field select option:checked { color: #17131e; background: var(--primary); }
 .field textarea { resize: vertical; line-height: 1.5; font-family: "Geist Mono", "SFMono-Regular", Consolas, monospace; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .connection-feedback { margin-top: 12px; color: var(--green); font-size: 11px; }

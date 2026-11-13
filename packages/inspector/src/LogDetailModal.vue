@@ -1,74 +1,68 @@
 <script setup lang="ts">
 import type { DebugLogRecord } from '@flash-debug/types'
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { contentFor, detectContentFormat, formattedContent, languageFor } from './content-format'
-import { INSPECTOR_EDITOR_OPTIONS, INSPECTOR_EDITOR_THEME } from './editor-config'
-import vitesseDark from '@shikijs/themes/vitesse-dark'
-import jsonLang from '@shikijs/langs/json'
-import jsoncLang from '@shikijs/langs/jsonc'
-import jsonlLang from '@shikijs/langs/jsonl'
-import yamlLang from '@shikijs/langs/yaml'
 
 const props = defineProps<{ record: DebugLogRecord | null }>()
 const emit = defineEmits<{ close: [] }>()
-const editorHost = ref<HTMLElement>()
-const editor = ref<{ dispose: () => void }>()
-const model = ref<{ dispose: () => void, setValue: (value: string) => void }>()
-let monaco: Awaited<ReturnType<typeof import('modern-monaco').init>> | undefined
+const editorFrame = ref<HTMLIFrameElement>()
+const editorError = ref('')
+const editorReady = ref(false)
+const editorLoading = ref(false)
 
-async function ensureEditor(): Promise<void> {
-  if (monaco || !editorHost.value) {
-    return
-  }
-
-  const { init } = await import('modern-monaco')
-  monaco = await init({
-    defaultTheme: vitesseDark,
-    themes: [vitesseDark],
-    langs: [jsonLang, jsoncLang, jsonlLang, yamlLang]
-  })
-  editor.value = monaco.editor.create(editorHost.value, {
-    ...INSPECTOR_EDITOR_OPTIONS,
-    theme: INSPECTOR_EDITOR_THEME,
-    language: 'text',
-    value: ''
-  })
-}
-
-async function renderRecord(record: DebugLogRecord | null): Promise<void> {
-  if (!record) {
-    return
-  }
-
-  await ensureEditor()
-  if (!monaco || !editor.value) {
+function sendContent(): void {
+  const record = props.record
+  const frame = editorFrame.value
+  if (!record || !frame?.contentWindow) {
     return
   }
 
   const format = detectContentFormat(record)
-  const language = languageFor(format)
-  const value = formattedContent(record)
-  const currentModel = model.value
+  frame.contentWindow.postMessage({
+    source: 'flash-debug-inspector',
+    type: 'set-content',
+    content: formattedContent(record),
+    language: languageFor(format),
+  }, window.location.origin)
+}
 
-  if (!currentModel) {
-    const created = monaco.editor.createModel(value, language)
-    model.value = created
-    ;(editor.value as { setModel?: (model: unknown) => void }).setModel?.(created)
+function handleFrameMessage(event: MessageEvent): void {
+  if (event.origin !== window.location.origin || event.source !== editorFrame.value?.contentWindow || event.data?.source !== 'flash-debug-monaco') {
     return
   }
 
-  currentModel.setValue(value)
-  monaco.editor.setModelLanguage(currentModel as never, language)
+  if (event.data.type === 'ready') {
+    editorReady.value = true
+    editorLoading.value = false
+    editorError.value = ''
+    sendContent()
+  }
+  else if (event.data.type === 'error') {
+    editorLoading.value = false
+    editorError.value = typeof event.data.message === 'string' ? event.data.message : 'Monaco failed to load'
+  }
 }
 
-watch(() => props.record, record => {
-  void renderRecord(record)
-}, { immediate: true })
+async function loadEditor(): Promise<void> {
+  if (!props.record || editorLoading.value || editorReady.value) {
+    return
+  }
 
-onBeforeUnmount(() => {
-  model.value?.dispose()
-  editor.value?.dispose()
-})
+  editorLoading.value = true
+  await nextTick()
+  sendContent()
+}
+
+watch(() => props.record, () => {
+  editorError.value = ''
+  editorReady.value = false
+  editorLoading.value = false
+  void loadEditor()
+}, { immediate: true, flush: 'post' })
+
+onMounted(() => window.addEventListener('message', handleFrameMessage))
+
+onBeforeUnmount(() => window.removeEventListener('message', handleFrameMessage))
 
 function copyContent(): void {
   if (props.record) {
@@ -97,7 +91,14 @@ function copyContent(): void {
         <div><dt>Event</dt><dd>{{ record.id }}</dd></div>
       </dl>
 
-      <div ref="editorHost" class="detail-editor" />
+      <div class="detail-editor">
+        <div v-if="editorLoading && !editorError" class="editor-loading" role="status" aria-live="polite">
+          <span class="loading-spinner" aria-hidden="true" />
+          <span>Loading Monaco…</span>
+        </div>
+        <div v-if="editorError" class="editor-error">Unable to load Monaco: {{ editorError }}</div>
+        <iframe v-if="!editorError" :key="record.id" ref="editorFrame" class="detail-editor-frame" :class="{ 'is-hidden': !editorReady }" src="/monaco.html" title="Read only log editor" @load="sendContent" />
+      </div>
 
       <footer class="detail-footer">
         <span>{{ contentFor(record).length.toLocaleString() }} characters</span>
