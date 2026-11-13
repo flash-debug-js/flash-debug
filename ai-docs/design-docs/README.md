@@ -12,6 +12,7 @@
 | [04-log-protocol.md](./04-log-protocol.md) | 日志事件、上传和实时推送协议 |
 | [05-runtime-flow.md](./05-runtime-flow.md) | `npx flash-debug` 启动时序和清理规则 |
 | [06-inspector-design.md](./06-inspector-design.md) | Inspector 页面信息架构、布局、状态和交互 |
+| [07-silkworm-design.md](./07-silkworm-design.md) | Silkworm 测试客户端、自动场景和手动发送设计 |
 | [12-roadmap.md](./12-roadmap.md) | 分阶段实现计划 |
 
 ## 核心决策
