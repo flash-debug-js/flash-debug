@@ -4,6 +4,6 @@ import { mergeDefaultBuildConfig } from '../../scripts/build.common'
 export default defineBuildConfig(mergeDefaultBuildConfig({
   entries: [
     'src/index',
-    { input: 'src/config', name: 'config' }
-  ]
+    { input: 'src/config', name: 'config' },
+  ],
 }))

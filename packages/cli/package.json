@@ -23,12 +23,12 @@
   },
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
-  "files": [
-    "dist"
-  ],
   "bin": {
     "flash-debug": "./dist/bin.mjs"
   },
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=22.14.0"
   },

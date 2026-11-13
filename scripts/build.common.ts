@@ -7,9 +7,9 @@ const common: BuildConfig = {
   rollup: {
     esbuild: { target: 'node22' },
     inlineDependencies: false,
-    dts: { respectExternal: true }
+    dts: { respectExternal: true },
   },
-  failOnWarn: false
+  failOnWarn: false,
 }
 
 export function mergeDefaultBuildConfig(config: BuildConfig): BuildConfig {

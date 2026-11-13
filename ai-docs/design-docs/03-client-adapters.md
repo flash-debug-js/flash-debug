@@ -9,13 +9,13 @@ interface DebugClientAdapter {
   readonly id: string
   readonly capabilities: readonly string[]
 
-  listDevices(options?: { signal?: AbortSignal }): Promise<DebugDevice[]>
+  listDevices: (options?: { signal?: AbortSignal }) => Promise<DebugDevice[]>
 
-  startLogs(options: {
+  startLogs: (options: {
     deviceId: string
     onRecord: (record: DebugLogRecord) => void
     signal?: AbortSignal
-  }): Promise<DebugClientSession>
+  }) => Promise<DebugClientSession>
 }
 ```
 

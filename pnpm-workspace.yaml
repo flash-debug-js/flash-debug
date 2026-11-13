@@ -1,10 +1,4 @@
 minimumReleaseAgeExcludePrune: true
-trustPolicy: no-downgrade
-shellEmulator: true
-
-packages:
-  - packages/*
-
 minimumReleaseAgeExclude:
   - '@flash-tunnel/adapter-cloudflare'
   - '@flash-tunnel/config'
@@ -12,6 +6,12 @@ minimumReleaseAgeExclude:
   - '@flash-tunnel/sdk'
   - '@flash-tunnel/types'
   - '@flash-tunnel/utils'
+
+trustPolicy: no-downgrade
+shellEmulator: true
+
+packages:
+  - packages/*
 
 allowBuilds:
   esbuild: true

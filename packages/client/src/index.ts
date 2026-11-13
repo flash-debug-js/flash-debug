@@ -1,4 +1,4 @@
-import type { DebugClientAdapter, DebugDevice, DebugClientSession } from '@flash-debug/types'
+import type { DebugClientAdapter, DebugClientSession, DebugDevice } from '@flash-debug/types'
 
 export class ClientRegistry {
   private readonly adapters = new Map<string, DebugClientAdapter>()
@@ -15,12 +15,14 @@ export class ClientRegistry {
   }
 
   list(): DebugClientAdapter[] {
-    return [...this.adapters.values()]
+    return [
+      ...this.adapters.values(),
+    ]
   }
 
   async listDevices(options: { signal?: AbortSignal } = {}): Promise<DebugDevice[]> {
     const devices = await Promise.all(
-      this.list().map(adapter => adapter.listDevices(options))
+      this.list().map(adapter => adapter.listDevices(options)),
     )
     return devices.flat()
   }
