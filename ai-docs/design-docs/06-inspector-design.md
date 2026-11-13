@@ -241,13 +241,13 @@ DEVICES
 
 ## 详情编辑器主题
 
-日志详情弹窗统一使用 `modern-monaco/core`，只加载一个 Shiki 暗色主题：
+日志详情弹窗统一使用 `modern-monaco` 的编辑器入口，只加载一个 Shiki 暗色主题：
 
 ```text
 Theme: vitesse-dark
 ```
 
-`modern-monaco/core` 只在详情弹窗打开时懒加载。预加载的语言包括：
+`modern-monaco` 只在详情弹窗打开时懒加载。预加载的语言包括：
 
 - `json` / `jsonc` / `jsonl`；
 - `yaml`；
@@ -275,7 +275,7 @@ Theme: vitesse-dark
 
 实现上使用 Monaco 的 `readOnly` 和 `domReadOnly`，保留默认上下文菜单中的复制和选择能力。
 
-Inspector 前端安装 `modern-monaco`、`@shikijs/themes` 和 `@shikijs/langs`，由 `vitesse-dark` 作为唯一默认主题，并把 JSON/YAML/JSONL/ANSI grammar 本地打包。列表页面不加载编辑器，避免打开 Inspector 时提前加载 Monaco 和语言资源，也不依赖运行时 CDN。
+Inspector 前端安装 `modern-monaco`、`@shikijs/themes` 和 `@shikijs/langs`，由 `vitesse-dark` 作为唯一默认主题，并把 JSON/YAML/JSONL/ANSI grammar 本地打包。`modern-monaco/core` 只保留给需要手动注册语法或主题的场景，当前只读查看器直接使用主入口的 `init`，避免调用不存在的编辑器创建 API。列表页面不加载编辑器，避免打开 Inspector 时提前加载 Monaco 和语言资源，也不依赖运行时 CDN。
 
 ## 响应式行为
 
