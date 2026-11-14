@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
-import { nitro } from 'nitro/vite'
 import { defineConfig } from 'vite'
 
 const modernMonacoDist = dirname(fileURLToPath(import.meta.resolve('modern-monaco/core')))
@@ -59,7 +58,6 @@ export default defineConfig({
   plugins: [
     vue(),
     modernMonacoCoreAssets(),
-    ...nitro(),
   ],
   server: {
     host: '0.0.0.0',
@@ -68,7 +66,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        inspector: resolve(inspectorRoot, 'index.html'),
+        index: resolve(inspectorRoot, 'index.html'),
         monaco: resolve(inspectorRoot, 'monaco.html'),
       },
     },
