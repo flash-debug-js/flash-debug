@@ -196,6 +196,12 @@ importers:
       '@flash-debug/core':
         specifier: workspace:*
         version: link:../core
+      '@flash-debug/logger-adb':
+        specifier: workspace:*
+        version: link:../logger-adb
+      '@flash-debug/logger-hdc':
+        specifier: workspace:*
+        version: link:../logger-hdc
       cac:
         specifier: ^7.1.0
         version: 7.1.0
@@ -273,6 +279,12 @@ importers:
         version: 3.3.14(typescript@6.0.3)
 
   packages/logger-adb:
+    dependencies:
+      '@flash-debug/types':
+        specifier: workspace:*
+        version: link:../types
+
+  packages/logger-hdc:
     dependencies:
       '@flash-debug/types':
         specifier: workspace:*

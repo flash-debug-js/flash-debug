@@ -1,6 +1,6 @@
 export type DebugLogLevel = 'debug' | 'info' | 'warning' | 'error'
 
-export type DebugLogSource = 'flutter' | 'adb' | 'server' | 'unknown'
+export type DebugLogSource = 'flutter' | 'adb' | 'harmony' | 'server' | 'unknown'
 
 export type DebugLogType = 'log' | 'network' | 'exception' | 'performance' | 'event'
 
@@ -27,7 +27,7 @@ export interface DebugLogRecord {
 export interface DebugDevice {
   id: string
   name?: string
-  platform: 'android' | 'ios' | 'web' | 'unknown'
+  platform: 'android' | 'harmony' | 'ios' | 'web' | 'unknown'
   transport: string
   state: 'online' | 'offline' | 'unauthorized' | 'unknown'
   metadata?: Record<string, string>

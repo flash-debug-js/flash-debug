@@ -1,7 +1,9 @@
+import type { DebugClientAdapter, DebugClientSession } from '@flash-debug/client'
 import type { EmbeddedTunnelSession } from '@flash-tunnel/sdk'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
+import { HttpLogSink } from '@flash-debug/client'
 import { startDebugServer } from '@flash-debug/server'
 import { startTunnel } from '@flash-tunnel/sdk'
 
@@ -20,6 +22,11 @@ export interface DebugRuntimeOptions {
   apiToken?: string
   accountId?: string
   zoneId?: string
+  client?: {
+    adapter: DebugClientAdapter
+    deviceId: string
+    clientId?: string
+  }
   onLog?: (line: string, stream: 'stdout' | 'stderr') => void
 }
 
@@ -27,6 +34,7 @@ export interface DebugRuntime {
   localUrl: string
   publicUrl?: string
   tunnel?: EmbeddedTunnelSession
+  clientSession?: DebugClientSession
   stop: () => Promise<void>
 }
 
@@ -45,7 +53,39 @@ export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Prom
   })
 
   let tunnel: EmbeddedTunnelSession | undefined
+  let clientSession: DebugClientSession | undefined
+  let logSink: HttpLogSink | undefined
   try {
+    if (options.client) {
+      const clientId = options.client.clientId
+        ?? `flash-debug-${options.client.adapter.id}-${options.client.deviceId}`
+      logSink = new HttpLogSink({
+        baseUrl: server.localUrl,
+        clientId,
+        onError: error => options.onLog?.(
+          error instanceof Error
+            ? error.message
+            : String(error),
+          'stderr',
+        ),
+      })
+      clientSession = await options.client.adapter.startLogs({
+        deviceId: options.client.deviceId,
+        onRecord: (record) => {
+          try {
+            logSink?.append(record)
+          }
+          catch (error) {
+            options.onLog?.(
+              error instanceof Error
+                ? error.message
+                : String(error),
+              'stderr',
+            )
+          }
+        },
+      })
+    }
     if (options.tunnel !== false) {
       tunnel = await startTunnel({
         localUrl: server.localUrl,
@@ -62,6 +102,8 @@ export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Prom
     }
   }
   catch (error) {
+    await clientSession?.stop()
+    await logSink?.close().catch(() => {})
     await server.close()
     throw error
   }
@@ -71,11 +113,14 @@ export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Prom
     localUrl: server.localUrl,
     publicUrl: tunnel?.publicUrl,
     tunnel,
+    clientSession,
     stop: async () => {
       if (stopped) {
         return
       }
       stopped = true
+      await clientSession?.stop()
+      await logSink?.close()
       await tunnel?.stop()
       await server.close()
     },

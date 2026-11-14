@@ -1,0 +1,40 @@
+{
+  "name": "@flash-debug/logger-hdc",
+  "type": "module",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/flash-debug-js/flash-debug#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flash-debug-js/flash-debug.git"
+  },
+  "bugs": {
+    "url": "https://github.com/flash-debug-js/flash-debug/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "scripts": {
+    "build": "unbuild",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@flash-debug/types": "workspace:*"
+  }
+}
