@@ -40,3 +40,5 @@ flash-debug --no-tunnel --adapter hdc --hdc-path "C:/DevEco Studio/sdk/default/H
 ```
 
 HDC 设备列表使用 `hdc list targets`，实时日志使用 `hdc -t <device-id> hilog -v long`。每一行 HiLog 会转换成一条完整的 `harmony` 日志事件并上传到本地 Inspector。
+
+适配器会声明自己的采集筛选项，Inspector 会根据声明生成控件。HDC 默认只采集应用日志的 Info、Warning、Error 和 Fatal 级别；可以在页面中继续按日志类型、级别、Domain、Tag、PID 和正则表达式调整。采集筛选变化后会重启当前设备日志会话，已经进入内存的历史日志不会被删除。

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseAdbDevices, parseLogcatLine } from '../src'
+import { getAdbSourceDescriptor, parseAdbDevices, parseLogcatLine } from '../src'
 
 describe('adb protocol parsing', () => {
   it('parses online devices', () => {
@@ -16,5 +16,11 @@ describe('adb protocol parsing', () => {
       message: 'failed',
       deviceId: 'abc123',
     }))
+  })
+
+  it('exposes source-owned capture filters', () => {
+    const descriptor = getAdbSourceDescriptor()
+    expect(descriptor.source).toBe('adb')
+    expect(descriptor.filters.map(filter => filter.id)).toEqual(['filterSpecs', 'pid'])
   })
 })

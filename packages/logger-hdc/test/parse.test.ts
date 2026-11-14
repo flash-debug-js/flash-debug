@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseHdcDevices, parseHilogLine } from '../src'
+import { getHdcSourceDescriptor, parseHdcDevices, parseHilogLine } from '../src'
 
 describe('hDC protocol parsing', () => {
   it('parses connected targets', () => {
@@ -51,5 +51,18 @@ describe('hDC protocol parsing', () => {
 
   it('ignores non-log output', () => {
     expect(parseHilogLine('[Info] hdc server connected')).toBeUndefined()
+  })
+
+  it('exposes source-owned capture filters', () => {
+    const descriptor = getHdcSourceDescriptor()
+    expect(descriptor.source).toBe('harmony')
+    expect(descriptor.filters.map(filter => filter.id)).toEqual([
+      'logType',
+      'levels',
+      'domain',
+      'tag',
+      'pid',
+      'regex',
+    ])
   })
 })

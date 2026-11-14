@@ -12,6 +12,8 @@ class LogStore {
   private readonly ids = new Set<string>()
   private readonly listeners = new Set<Listener>()
   private cursor = 0
+  private orderStart = 0
+  private dropped = 0
 
   append(records: DebugLogRecord[]): { accepted: number, cursor: number } {
     let accepted = 0
@@ -29,18 +31,36 @@ class LogStore {
       }
     }
 
-    while (this.records.length > 5000) {
-      const removed = this.records.shift()
+    while (this.records.length - this.orderStart > 5000) {
+      const removed = this.records[this.orderStart]
+      this.orderStart += 1
       if (removed) {
         this.ids.delete(removed.record.id)
       }
+      this.dropped += 1
+    }
+
+    if (this.orderStart > 1024 && this.orderStart * 2 > this.records.length) {
+      this.records.splice(0, this.orderStart)
+      this.orderStart = 0
     }
 
     return { accepted, cursor: this.cursor }
   }
 
-  list(afterCursor = 0): LogEvent[] {
-    return this.records.filter(event => event.cursor > afterCursor)
+  list(afterCursor = 0, limit = 2000): LogEvent[] {
+    const items: LogEvent[] = []
+    for (let index = this.orderStart; index < this.records.length; index += 1) {
+      const event = this.records[index]
+      if (!event || event.cursor <= afterCursor) {
+        continue
+      }
+      items.push(event)
+      if (items.length >= limit) {
+        break
+      }
+    }
+    return items
   }
 
   subscribe(listener: Listener): () => void {
@@ -48,8 +68,12 @@ class LogStore {
     return () => this.listeners.delete(listener)
   }
 
-  stats(): { count: number, cursor: number } {
-    return { count: this.records.length, cursor: this.cursor }
+  stats(): { count: number, cursor: number, dropped: number } {
+    return {
+      count: this.records.length - this.orderStart,
+      cursor: this.cursor,
+      dropped: this.dropped,
+    }
   }
 }
 

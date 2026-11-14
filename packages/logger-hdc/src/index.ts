@@ -1,4 +1,4 @@
-import type { DebugClientAdapter, DebugClientSession, DebugDevice, DebugLogRecord } from '@flash-debug/types'
+import type { DebugClientAdapter, DebugClientSession, DebugDevice, DebugFilterValues, DebugLogRecord, DebugSourceDescriptor } from '@flash-debug/types'
 import type { Buffer } from 'node:buffer'
 import { execFile, spawn } from 'node:child_process'
 import process from 'node:process'
@@ -12,6 +12,75 @@ export interface HilogParseOptions {
   deviceId?: string
   now?: Date
 }
+
+export const HDC_DEFAULT_FILTERS = {
+  logType: 'app',
+  levels: ['I', 'W', 'E', 'F'],
+} as const
+
+const HDC_FILTER_DEFINITIONS = [
+  {
+    id: 'logType',
+    label: 'Log type',
+    kind: 'select',
+    scope: 'capture',
+    apply: 'restart',
+    defaultValue: HDC_DEFAULT_FILTERS.logType,
+    options: [
+      { label: 'Application', value: 'app' },
+      { label: 'Core', value: 'core' },
+      { label: 'Init', value: 'init' },
+      { label: 'Kernel', value: 'kmsg' },
+    ],
+  },
+  {
+    id: 'levels',
+    label: 'Levels',
+    kind: 'multi-select',
+    scope: 'capture',
+    apply: 'restart',
+    defaultValue: [...HDC_DEFAULT_FILTERS.levels],
+    options: [
+      { label: 'Debug', value: 'D' },
+      { label: 'Info', value: 'I' },
+      { label: 'Warning', value: 'W' },
+      { label: 'Error', value: 'E' },
+      { label: 'Fatal', value: 'F' },
+    ],
+  },
+  {
+    id: 'domain',
+    label: 'Domain',
+    kind: 'text',
+    scope: 'capture',
+    apply: 'restart',
+    placeholder: 'A03200',
+  },
+  {
+    id: 'tag',
+    label: 'Tag',
+    kind: 'text',
+    scope: 'capture',
+    apply: 'restart',
+    placeholder: 'testTag',
+  },
+  {
+    id: 'pid',
+    label: 'PID',
+    kind: 'number',
+    scope: 'capture',
+    apply: 'restart',
+    placeholder: '5394',
+  },
+  {
+    id: 'regex',
+    label: 'Message regex',
+    kind: 'text',
+    scope: 'capture',
+    apply: 'restart',
+    placeholder: 'keyword or pattern',
+  },
+] as const
 
 const execFileAsync = promisify(execFile)
 
@@ -50,6 +119,16 @@ export function parseHdcDevices(output: string): DebugDevice[] {
       }
     })
     .filter(device => device.id.length > 0)
+}
+
+export function getHdcSourceDescriptor(): DebugSourceDescriptor {
+  return {
+    id: 'hdc',
+    label: 'HarmonyOS HDC',
+    source: 'harmony',
+    transport: 'hdc',
+    filters: HDC_FILTER_DEFINITIONS,
+  }
 }
 
 /** Parse the standard `hdc hilog -v long` output shape into the shared protocol. */
@@ -140,6 +219,7 @@ export function createHdcAdapter(options: HdcAdapterOptions = {}): DebugClientAd
   return {
     id: 'hdc',
     capabilities: ['devices', 'hilog'],
+    getSourceDescriptor: getHdcSourceDescriptor,
 
     async listDevices(listOptions = {}): Promise<DebugDevice[]> {
       const result = await execFileAsync(hdcPath, ['list', 'targets'], {
@@ -150,13 +230,18 @@ export function createHdcAdapter(options: HdcAdapterOptions = {}): DebugClientAd
       return parseHdcDevices(result.stdout)
     },
 
-    async startLogs({ deviceId, onRecord, signal }): Promise<DebugClientSession> {
+    async startLogs({ deviceId, onRecord, signal, filters }): Promise<DebugClientSession> {
+      const resolvedFilters = {
+        ...HDC_DEFAULT_FILTERS,
+        ...filters,
+      }
       const child = spawn(hdcPath, [
         '-t',
         deviceId,
         'hilog',
         '-v',
         'long',
+        ...buildHilogFilterArgs(resolvedFilters),
       ], {
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
@@ -219,6 +304,48 @@ export function createHdcAdapter(options: HdcAdapterOptions = {}): DebugClientAd
       }
     },
   }
+}
+
+function buildHilogFilterArgs(filters: DebugFilterValues): string[] {
+  const args: string[] = []
+  const logType = typeof filters.logType === 'string'
+    ? filters.logType
+    : undefined
+  const levels = Array.isArray(filters.levels)
+    ? filters.levels.filter((value): value is string => typeof value === 'string')
+    : []
+  const domain = typeof filters.domain === 'string'
+    ? filters.domain.trim()
+    : ''
+  const tag = typeof filters.tag === 'string'
+    ? filters.tag.trim()
+    : ''
+  const pid = typeof filters.pid === 'number' || typeof filters.pid === 'string'
+    ? String(filters.pid).trim()
+    : ''
+  const regex = typeof filters.regex === 'string'
+    ? filters.regex.trim()
+    : ''
+
+  if (logType) {
+    args.push('-t', logType)
+  }
+  if (levels.length) {
+    args.push('-L', levels.join('/'))
+  }
+  if (domain) {
+    args.push('-D', domain)
+  }
+  if (tag) {
+    args.push('-T', tag)
+  }
+  if (pid) {
+    args.push('-P', pid)
+  }
+  if (regex) {
+    args.push('-e', regex)
+  }
+  return args
 }
 
 export type { DebugClientAdapter, DebugClientSession, DebugDevice, DebugLogRecord } from '@flash-debug/types'

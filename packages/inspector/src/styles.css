@@ -80,6 +80,15 @@ button { color: inherit; }
 .filter-row small { color: var(--faint); }
 .filter-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
 .filter-label { display: block; margin: 0 6px 8px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.capture-filter-heading { display: flex; align-items: center; justify-content: space-between; }
+.capture-filter-heading small { color: var(--primary); font-size: 9px; letter-spacing: 0; text-transform: none; }
+.capture-filter { display: grid; gap: 5px; margin: 0 4px 10px; }
+.capture-filter label { color: var(--muted); font-size: 11px; }
+.capture-filter input, .capture-filter select { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; color: var(--fg); background: var(--panel); font: inherit; font-size: 11px; outline: none; }
+.capture-filter input:focus, .capture-filter select:focus { border-color: var(--primary); }
+.capture-filter select[multiple] { min-height: 72px; }
+.capture-filter input[type="checkbox"] { width: 16px; height: 16px; padding: 0; }
+.capture-filter small { color: var(--faint); font-size: 10px; line-height: 1.35; }
 
 .log-panel { min-width: 0; overflow: hidden; border-radius: 17px; display: flex; flex-direction: column; }
 .log-panel-header { justify-content: space-between; min-height: 60px; padding: 12px 18px; border-bottom: 1px solid var(--border); }

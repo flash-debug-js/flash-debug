@@ -1,4 +1,5 @@
 import type { DebugClientAdapter, DebugClientSession } from '@flash-debug/client'
+import type { DebugFilterValues, DebugSessionSnapshot, DebugSourceDescriptor } from '@flash-debug/types'
 import type { EmbeddedTunnelSession } from '@flash-tunnel/sdk'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
@@ -26,6 +27,7 @@ export interface DebugRuntimeOptions {
     adapter: DebugClientAdapter
     deviceId: string
     clientId?: string
+    filters?: DebugFilterValues
   }
   onLog?: (line: string, stream: 'stdout' | 'stderr') => void
 }
@@ -45,16 +47,66 @@ function defaultServerRoot(): string {
 
 /** Start the local Inspector origin and optionally expose it through Tunnel. */
 export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Promise<DebugRuntime> {
+  let tunnel: EmbeddedTunnelSession | undefined
+  let clientSession: DebugClientSession | undefined
+  let logSink: HttpLogSink | undefined
+  const sourceDescriptor = options.client?.adapter.getSourceDescriptor?.()
+  let clientFilters = mergeDefaultFilters(sourceDescriptor, options.client?.filters)
+
+  const getSessionSnapshot = (): DebugSessionSnapshot => ({
+    connected: clientSession !== undefined,
+    ...(options.client
+      ? {
+          adapterId: options.client.adapter.id,
+          deviceId: options.client.deviceId,
+        }
+      : {}),
+    ...(sourceDescriptor
+      ? { source: sourceDescriptor }
+      : {}),
+    filters: clientFilters,
+  })
+
+  const startClient = async (): Promise<void> => {
+    if (!options.client || !logSink) {
+      return
+    }
+    clientSession = await options.client.adapter.startLogs({
+      deviceId: options.client.deviceId,
+      filters: clientFilters,
+      onRecord: (record) => {
+        try {
+          logSink?.append(record)
+        }
+        catch (error) {
+          options.onLog?.(
+            error instanceof Error
+              ? error.message
+              : String(error),
+            'stderr',
+          )
+        }
+      },
+    })
+  }
+
   const server = await startDebugServer({
     host: options.host,
     port: options.port,
     rootDir: options.serverRoot ?? defaultServerRoot(),
+    onControlRequest: async (request) => {
+      if (request.action === 'get-session' || !options.client) {
+        return getSessionSnapshot()
+      }
+      await clientSession?.stop()
+      clientSession = undefined
+      clientFilters = mergeDefaultFilters(sourceDescriptor, request.filters)
+      await startClient()
+      return getSessionSnapshot()
+    },
     onLog: options.onLog,
   })
 
-  let tunnel: EmbeddedTunnelSession | undefined
-  let clientSession: DebugClientSession | undefined
-  let logSink: HttpLogSink | undefined
   try {
     if (options.client) {
       const clientId = options.client.clientId
@@ -69,22 +121,7 @@ export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Prom
           'stderr',
         ),
       })
-      clientSession = await options.client.adapter.startLogs({
-        deviceId: options.client.deviceId,
-        onRecord: (record) => {
-          try {
-            logSink?.append(record)
-          }
-          catch (error) {
-            options.onLog?.(
-              error instanceof Error
-                ? error.message
-                : String(error),
-              'stderr',
-            )
-          }
-        },
-      })
+      await startClient()
     }
     if (options.tunnel !== false) {
       tunnel = await startTunnel({
@@ -124,5 +161,25 @@ export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Prom
       await tunnel?.stop()
       await server.close()
     },
+  }
+}
+
+function mergeDefaultFilters(
+  descriptor: DebugSourceDescriptor | undefined,
+  values: DebugFilterValues | undefined,
+): DebugFilterValues {
+  const defaults = Object.fromEntries(
+    (descriptor?.filters ?? [])
+      .filter(filter => filter.defaultValue !== undefined)
+      .map(filter => [
+        filter.id,
+        Array.isArray(filter.defaultValue)
+          ? [...filter.defaultValue]
+          : filter.defaultValue,
+      ]),
+  )
+  return {
+    ...defaults,
+    ...values,
   }
 }

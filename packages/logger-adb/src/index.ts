@@ -1,4 +1,4 @@
-import type { DebugClientAdapter, DebugClientSession, DebugDevice, DebugLogRecord } from '@flash-debug/types'
+import type { DebugClientAdapter, DebugClientSession, DebugDevice, DebugFilterValues, DebugLogRecord, DebugSourceDescriptor } from '@flash-debug/types'
 import type { Buffer } from 'node:buffer'
 import { execFile, spawn } from 'node:child_process'
 import process from 'node:process'
@@ -18,6 +18,26 @@ const LOG_LEVELS = {
   E: 'error',
   F: 'error',
 } as const
+
+const ADB_FILTER_DEFINITIONS = [
+  {
+    id: 'filterSpecs',
+    label: 'Filter specs',
+    kind: 'text',
+    scope: 'capture',
+    apply: 'restart',
+    placeholder: '*:S ActivityManager:I',
+    description: 'Use adb logcat filter syntax, for example *:S ActivityManager:I.',
+  },
+  {
+    id: 'pid',
+    label: 'PID',
+    kind: 'number',
+    scope: 'capture',
+    apply: 'restart',
+    placeholder: '12345',
+  },
+] as const
 
 export function parseAdbDevices(output: string): DebugDevice[] {
   return output
@@ -48,6 +68,16 @@ export function parseAdbDevices(output: string): DebugDevice[] {
       }
     })
     .filter(device => device.id.length > 0)
+}
+
+export function getAdbSourceDescriptor(): DebugSourceDescriptor {
+  return {
+    id: 'adb',
+    label: 'Android ADB',
+    source: 'adb',
+    transport: 'adb',
+    filters: ADB_FILTER_DEFINITIONS,
+  }
 }
 
 /** Parse the common `adb logcat -v threadtime` shape into the shared protocol. */
@@ -101,6 +131,7 @@ export function createAdbAdapter(_options: AdbAdapterOptions = {}): DebugClientA
   return {
     id: 'adb',
     capabilities: ['devices', 'logcat'],
+    getSourceDescriptor: getAdbSourceDescriptor,
 
     async listDevices(options = {}): Promise<DebugDevice[]> {
       const result = await execFileAsync(adbPath, ['devices', '-l'], {
@@ -111,13 +142,14 @@ export function createAdbAdapter(_options: AdbAdapterOptions = {}): DebugClientA
       return parseAdbDevices(result.stdout)
     },
 
-    async startLogs({ deviceId, onRecord, signal }): Promise<DebugClientSession> {
+    async startLogs({ deviceId, onRecord, signal, filters }): Promise<DebugClientSession> {
       const child = spawn(adbPath, [
         '-s',
         deviceId,
         'logcat',
         '-v',
         'threadtime',
+        ...buildLogcatFilterArgs(filters),
       ], {
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
@@ -180,6 +212,26 @@ export function createAdbAdapter(_options: AdbAdapterOptions = {}): DebugClientA
       }
     },
   }
+}
+
+function buildLogcatFilterArgs(filters: DebugFilterValues | undefined): string[] {
+  if (!filters) {
+    return []
+  }
+  const args: string[] = []
+  const filterSpecs = typeof filters.filterSpecs === 'string'
+    ? filters.filterSpecs.trim()
+    : ''
+  const pid = typeof filters.pid === 'number' || typeof filters.pid === 'string'
+    ? String(filters.pid).trim()
+    : ''
+  if (filterSpecs) {
+    args.push(...filterSpecs.split(/\s+/).filter(Boolean))
+  }
+  if (pid) {
+    args.push('--pid', pid)
+  }
+  return args
 }
 
 export type { DebugClientAdapter, DebugClientSession, DebugDevice, DebugLogRecord } from '@flash-debug/types'
