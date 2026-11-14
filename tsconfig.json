@@ -10,6 +10,7 @@
       "@flash-debug/config": ["./packages/config/src/index.ts"],
       "@flash-debug/core": ["./packages/core/src/index.ts"],
       "@flash-debug/logger-adb": ["./packages/logger-adb/src/index.ts"],
+      "@flash-debug/logger-hdc": ["./packages/logger-hdc/src/index.ts"],
       "@flash-debug/inspector": ["./packages/inspector/src/main.ts"],
       "@flash-debug/server": ["./packages/server/src/index.ts"],
       "@flash-debug/types": ["./packages/types/src/index.ts"],
