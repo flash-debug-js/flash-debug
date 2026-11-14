@@ -164,7 +164,12 @@ function getSnapshot(): LogSnapshot {
     levels: toCountItems(levelCounts),
     types: toCountItems(typeCounts),
     filterOptions: Object.fromEntries(
-      [...filterOptions.entries()].map(([key, values]) => [key, [...values].sort()]),
+      [
+        ...filterOptions.entries(),
+      ].map(([key, values]) => [
+        key,
+        [...values].sort(),
+      ]),
     ),
   }
 }

@@ -42,3 +42,21 @@ flash-debug --no-tunnel --adapter hdc --hdc-path "C:/DevEco Studio/sdk/default/H
 HDC 设备列表使用 `hdc list targets`，实时日志使用 `hdc -t <device-id> hilog -v long`。每一行 HiLog 会转换成一条完整的 `harmony` 日志事件并上传到本地 Inspector。
 
 适配器会声明自己的采集筛选项，Inspector 会根据声明生成控件。HDC 默认只采集应用日志的 Warning、Error 和 Fatal 级别；可以在页面中继续按日志类型、级别、Domain、Tag、PID 和正则表达式调整。采集筛选变化后会重启当前设备日志会话，已经进入内存的历史日志不会被删除。
+
+## 发布
+
+根目录已经内置 `bumpp`，用于统一更新 monorepo 中公开包的版本号：
+
+```bash
+pnpm install
+pnpm release
+```
+
+`pnpm release` 会执行 `bumpp -r`，交互式更新版本号并创建提交和 Git tag。`bumpp` 默认会将提交和 tag 推送到远程仓库，因此确认版本前请检查当前分支和远程地址：
+
+```bash
+git status
+git remote -v
+```
+
+推送 `v*` tag 后，`.github/workflows/release.yaml` 会执行检查、构建、创建 GitHub Release，并发布可发布的 workspace 包。

@@ -12,12 +12,14 @@
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "lint": "eslint --cache",
+    "release": "bumpp -r",
     "dev": "pnpm --filter @flash-debug/inspector dev",
     "dev:silkworm": "pnpm --filter @flash-debug/silkworm dev"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^10.0.0",
     "@types/node": "^26.6.6",
+    "bumpp": "^12.3.0",
     "defu": "^6.1.7",
     "eslint": "^10.14.0",
     "typescript": "6.0.3",
