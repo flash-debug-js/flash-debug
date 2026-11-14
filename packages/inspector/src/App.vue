@@ -31,6 +31,7 @@ let eventSource: EventSource | undefined
 const filteredLogs = computed(() => logSnapshot.value.items)
 const sourceOptions = computed(() => logSnapshot.value.sources.map(item => item.value))
 const captureFilterDefinitions = computed(() => session.value?.source?.filters.filter(filter => filter.scope === 'capture') ?? [])
+const captureFilterOptions = computed(() => logSnapshot.value.filterOptions)
 
 function addRecord(record: DebugLogRecord): void {
   workerClient.enqueue(record)
@@ -240,7 +241,7 @@ onBeforeUnmount(() => {
         <button v-for="item in logSnapshot.sources" :key="item.value" class="filter-row" :class="{ active: source === item.value }" type="button" @click="source = item.value">{{ item.value }} <small>{{ item.count }}</small></button>
         <div v-if="captureFilterDefinitions.length" class="filter-section capture-filters">
           <div class="filter-label capture-filter-heading">
-            <span>Capture filters</span>
+            <span>Device filters</span>
             <small v-if="applyingCaptureFilters">Applying…</small>
           </div>
           <div v-for="definition in captureFilterDefinitions" :key="definition.id" class="capture-filter">
@@ -271,23 +272,29 @@ onBeforeUnmount(() => {
               :value="String(filterValue(definition))"
               :placeholder="definition.placeholder"
               :disabled="applyingCaptureFilters"
+              @input="captureFilters[definition.id] = ($event.target as HTMLInputElement).value"
               @change="void updateCaptureFilter(definition.id, Number(($event.target as HTMLInputElement).value) || undefined)"
             />
             <input
               v-else
               :id="`capture-filter-${definition.id}`"
               :type="definition.kind === 'boolean' ? 'checkbox' : 'text'"
+              :list="captureFilterOptions[definition.id]?.length ? `capture-options-${definition.id}` : undefined"
               :value="definition.kind === 'boolean' ? undefined : String(filterValue(definition))"
               :checked="definition.kind === 'boolean' ? Boolean(filterValue(definition)) : undefined"
               :placeholder="definition.placeholder"
               :disabled="applyingCaptureFilters"
+              @input="definition.kind !== 'boolean' && (captureFilters[definition.id] = ($event.target as HTMLInputElement).value)"
               @change="void updateCaptureFilter(definition.id, definition.kind === 'boolean' ? ($event.target as HTMLInputElement).checked : ($event.target as HTMLInputElement).value)"
             />
+            <datalist v-if="definition.kind === 'text' && captureFilterOptions[definition.id]?.length" :id="`capture-options-${definition.id}`">
+              <option v-for="option in captureFilterOptions[definition.id]" :key="option" :value="option" />
+            </datalist>
             <small v-if="definition.description">{{ definition.description }}</small>
           </div>
         </div>
         <div class="filter-section">
-          <span class="filter-label">Level</span>
+          <span class="filter-label">View filters · Level</span>
           <button v-for="item in ['all', 'debug', 'info', 'warning', 'error']" :key="item" class="filter-row" :class="{ active: level === item }" type="button" @click="level = item as typeof level">{{ item }}</button>
         </div>
       </aside>

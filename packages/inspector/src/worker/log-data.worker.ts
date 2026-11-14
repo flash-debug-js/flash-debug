@@ -13,6 +13,7 @@ const orderedIds: string[] = []
 const sourceCounts = new Map<DebugLogSource, number>()
 const levelCounts = new Map<DebugLogLevel, number>()
 const typeCounts = new Map<DebugLogType, number>()
+const filterOptions = new Map<string, Set<string>>()
 let orderStart = 0
 let filter: LogFilter = {
   query: '',
@@ -59,6 +60,23 @@ function appendRecord(record: DebugLogRecord): void {
   incrementCount(sourceCounts, record.source)
   incrementCount(levelCounts, record.level)
   incrementCount(typeCounts, record.type)
+  addFilterOption('tag', record.tag)
+  addFilterOption('deviceId', record.deviceId)
+  addFilterOption('domain', readAttribute(record, 'domain'))
+  addFilterOption('pid', readAttribute(record, 'pid'))
+}
+
+function addFilterOption(key: string, value: unknown): void {
+  if (value === undefined || value === null || String(value).length === 0) {
+    return
+  }
+  const values = filterOptions.get(key) ?? new Set<string>()
+  values.add(String(value))
+  filterOptions.set(key, values)
+}
+
+function readAttribute(record: DebugLogRecord, key: string): unknown {
+  return record.attributes?.[key]
 }
 
 function removeRecord(id: string): void {
@@ -145,6 +163,9 @@ function getSnapshot(): LogSnapshot {
     sources: toCountItems(sourceCounts),
     levels: toCountItems(levelCounts),
     types: toCountItems(typeCounts),
+    filterOptions: Object.fromEntries(
+      [...filterOptions.entries()].map(([key, values]) => [key, [...values].sort()]),
+    ),
   }
 }
 
@@ -176,6 +197,7 @@ const api: LogWorkerApi = {
     sourceCounts.clear()
     levelCounts.clear()
     typeCounts.clear()
+    filterOptions.clear()
     return getSnapshot()
   },
 }

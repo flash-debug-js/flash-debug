@@ -84,7 +84,8 @@ button { color: inherit; }
 .capture-filter-heading small { color: var(--primary); font-size: 9px; letter-spacing: 0; text-transform: none; }
 .capture-filter { display: grid; gap: 5px; margin: 0 4px 10px; }
 .capture-filter label { color: var(--muted); font-size: 11px; }
-.capture-filter input, .capture-filter select { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; color: var(--fg); background: var(--panel); font: inherit; font-size: 11px; outline: none; }
+.capture-filter input, .capture-filter select { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; color: #f4f4f5; background: #1d1d27; color-scheme: dark; font: inherit; font-size: 11px; outline: none; }
+.capture-filter option { color: #f4f4f5; background: #1d1d27; }
 .capture-filter input:focus, .capture-filter select:focus { border-color: var(--primary); }
 .capture-filter select[multiple] { min-height: 72px; }
 .capture-filter input[type="checkbox"] { width: 16px; height: 16px; padding: 0; }

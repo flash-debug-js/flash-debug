@@ -27,6 +27,7 @@ export interface LogSnapshot {
   sources: LogCountItem<DebugLogSource>[]
   levels: LogCountItem<DebugLogLevel>[]
   types: LogCountItem<DebugLogType>[]
+  filterOptions: Record<string, string[]>
 }
 
 export interface LogWorkerApi {
@@ -49,5 +50,6 @@ export function createEmptyLogSnapshot(): LogSnapshot {
     sources: [],
     levels: [],
     types: [],
+    filterOptions: {},
   }
 }

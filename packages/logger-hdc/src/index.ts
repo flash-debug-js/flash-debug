@@ -15,7 +15,7 @@ export interface HilogParseOptions {
 
 export const HDC_DEFAULT_FILTERS = {
   logType: 'app',
-  levels: ['I', 'W', 'E', 'F'],
+  levels: ['W', 'E', 'F'],
 } as const
 
 const HDC_FILTER_DEFINITIONS = [
@@ -55,6 +55,7 @@ const HDC_FILTER_DEFINITIONS = [
     scope: 'capture',
     apply: 'restart',
     placeholder: 'A03200',
+    description: 'Pick a value from recent logs or enter a Domain ID.',
   },
   {
     id: 'tag',
@@ -63,6 +64,7 @@ const HDC_FILTER_DEFINITIONS = [
     scope: 'capture',
     apply: 'restart',
     placeholder: 'testTag',
+    description: 'Pick a value from recent logs or enter a tag.',
   },
   {
     id: 'pid',
@@ -71,6 +73,7 @@ const HDC_FILTER_DEFINITIONS = [
     scope: 'capture',
     apply: 'restart',
     placeholder: '5394',
+    description: 'Pick a process ID from recent logs or enter one.',
   },
   {
     id: 'regex',
