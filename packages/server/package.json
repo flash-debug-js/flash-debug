@@ -32,6 +32,7 @@
     "node": ">=22.14.0"
   },
   "scripts": {
+    "dev": "nitro dev --host 127.0.0.1 --port 4518",
     "build": "unbuild",
     "typecheck": "tsc --noEmit"
   },

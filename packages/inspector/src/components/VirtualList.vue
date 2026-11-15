@@ -5,10 +5,16 @@ const props = withDefaults(defineProps<{
   items: readonly T[]
   itemHeight: number
   overscan?: number
+  follow?: boolean
   itemKey?: (item: T, index: number) => string | number
 }>(), {
   overscan: 8,
+  follow: false,
 })
+
+const emit = defineEmits<{
+  'scroll-state': [state: { atBottom: boolean, user: boolean }]
+}>()
 
 defineSlots<{
   default(props: { item: T, index: number }): unknown
@@ -18,6 +24,7 @@ const viewport = ref<HTMLElement>()
 const scrollTop = ref(0)
 const viewportHeight = ref(0)
 let resizeObserver: ResizeObserver | undefined
+let programmaticScroll = false
 
 const rowHeight = computed(() => Math.max(1, props.itemHeight))
 const overscanCount = computed(() => Math.max(0, Math.floor(props.overscan)))
@@ -39,7 +46,25 @@ function updateViewport(): void {
 }
 
 function handleScroll(event: Event): void {
-  scrollTop.value = (event.currentTarget as HTMLElement).scrollTop
+  const element = event.currentTarget as HTMLElement
+  scrollTop.value = element.scrollTop
+  const maxScrollTop = Math.max(0, contentHeight.value - viewportHeight.value)
+  emit('scroll-state', {
+    atBottom: element.scrollTop >= maxScrollTop - 2,
+    user: !programmaticScroll,
+  })
+}
+
+function scrollToEnd(): void {
+  if (!viewport.value) {
+    return
+  }
+  programmaticScroll = true
+  viewport.value.scrollTop = Math.max(0, contentHeight.value - viewportHeight.value)
+  updateViewport()
+  requestAnimationFrame(() => {
+    programmaticScroll = false
+  })
 }
 
 function itemKey(item: T, index: number): string | number {
@@ -57,13 +82,20 @@ onMounted(() => {
 watch(() => props.items.length, async () => {
   await nextTick()
   if (viewport.value) {
-    viewport.value.scrollTop = Math.min(
-      viewport.value.scrollTop,
-      Math.max(0, contentHeight.value - viewportHeight.value),
-    )
+    if (props.follow) {
+      scrollToEnd()
+    }
+    else {
+      viewport.value.scrollTop = Math.min(
+        viewport.value.scrollTop,
+        Math.max(0, contentHeight.value - viewportHeight.value),
+      )
+    }
   }
   updateViewport()
 })
+
+defineExpose({ scrollToEnd })
 
 onBeforeUnmount(() => resizeObserver?.disconnect())
 </script>

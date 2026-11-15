@@ -7,6 +7,7 @@ import { defineConfig } from 'vite'
 
 const modernMonacoDist = dirname(fileURLToPath(import.meta.resolve('modern-monaco/core')))
 const inspectorRoot = dirname(fileURLToPath(import.meta.url))
+const apiDevOrigin = 'http://127.0.0.1:4518'
 const modernMonacoAssets = ['editor-core.mjs', 'editor-worker-main.mjs', 'editor-worker.mjs'] as const
 
 function modernMonacoCoreAssets(): Plugin {
@@ -62,6 +63,16 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 4517,
+    proxy: {
+      '/api': {
+        target: apiDevOrigin,
+        changeOrigin: true,
+      },
+      '/healthz': {
+        target: apiDevOrigin,
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     rollupOptions: {

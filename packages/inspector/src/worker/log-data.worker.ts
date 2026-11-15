@@ -17,7 +17,7 @@ const filterOptions = new Map<string, Set<string>>()
 let orderStart = 0
 let filter: LogFilter = {
   query: '',
-  level: 'all',
+  levels: [],
   source: 'all',
 }
 
@@ -143,7 +143,7 @@ function getSnapshot(): LogSnapshot {
     }
 
     const { record } = stored
-    if (filter.level !== 'all' && record.level !== filter.level) {
+    if (filter.levels.length && !filter.levels.includes(record.level)) {
       continue
     }
     if (filter.source !== 'all' && record.source !== filter.source) {
@@ -186,7 +186,7 @@ const api: LogWorkerApi = {
   setFilter(nextFilter) {
     filter = {
       query: nextFilter.query,
-      level: nextFilter.level,
+      levels: [...nextFilter.levels],
       source: nextFilter.source,
     }
     return getSnapshot()

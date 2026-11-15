@@ -13,7 +13,7 @@
     "test": "vitest run",
     "lint": "eslint --cache",
     "release": "bumpp -r",
-    "dev": "pnpm --filter @flash-debug/inspector dev",
+    "dev": "pnpm --parallel --filter @flash-debug/server --filter @flash-debug/inspector run dev",
     "dev:silkworm": "pnpm --filter @flash-debug/silkworm dev"
   },
   "devDependencies": {

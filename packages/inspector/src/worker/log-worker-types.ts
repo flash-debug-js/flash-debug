@@ -2,7 +2,7 @@ import type { DebugLogLevel, DebugLogRecord, DebugLogSource, DebugLogType } from
 
 export interface LogFilter {
   query: string
-  level: 'all' | DebugLogLevel
+  levels: DebugLogLevel[]
   source: 'all' | DebugLogSource
 }
 

@@ -54,6 +54,10 @@ export async function testTarget(connection: ConnectionConfig): Promise<{ status
   if (!response.ok) {
     throw new TransportError(`Target health check failed with HTTP ${response.status}`, response.status)
   }
+  const payload = await readPayload(response)
+  if (payload.ok !== true || payload.service !== 'flash-debug') {
+    throw new TransportError('Target health check returned an invalid response', response.status)
+  }
   return { statusCode: response.status, latencyMs: Date.now() - startedAt }
 }
 
@@ -87,6 +91,10 @@ export async function sendBatch(connection: ConnectionConfig, items: GeneratedLo
       ? payload.message
       : `Target rejected request with HTTP ${response.status}`
     throw new TransportError(message, response.status)
+  }
+
+  if (typeof payload.accepted !== 'number') {
+    throw new TransportError('Target returned an invalid logs response', response.status)
   }
 
   return {
