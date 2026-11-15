@@ -3,6 +3,7 @@ import type { DebugLogLevel, DebugLogSource, DebugLogType } from '@flash-debug/t
 import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import type { AutoConfig, ConnectionConfig, ManualEventInput, RunnerSnapshot, SilkwormScenario } from './runner/types'
+import IconGlyph from './IconGlyph.vue'
 
 const scenarios: readonly SilkwormScenario[] = ['normal', 'mixed-sources', 'content-formats', 'network', 'exceptions', 'burst', 'duplicates', 'invalid', 'multi-device', 'long-run']
 const levels: readonly DebugLogLevel[] = ['debug', 'info', 'warning', 'error']
@@ -52,13 +53,17 @@ const snapshot = ref<RunnerSnapshot>({
   stats: { generated: 0, queued: 0, accepted: 0, failed: 0, duplicate: 0, retrying: 0, queueLength: 0 },
   history: [],
 })
-const message = ref('')
-const error = ref('')
+const notice = ref<{ kind: 'success' | 'error', text: string } | null>(null)
 const busy = ref(false)
 const manualBatchSize = ref(1)
 const duplicateManualId = ref(false)
+const connectionSettingsOpen = ref(false)
+const autoSettingsOpen = ref(false)
+const manualDetailsOpen = ref(false)
+const historyDrawerOpen = ref(false)
 const previewOpen = ref(false)
 let stream: EventSource | undefined
+let noticeTimer: ReturnType<typeof setTimeout> | undefined
 
 const autoRunning = computed(() => snapshot.value.auto.status === 'running' || snapshot.value.auto.status === 'starting')
 const autoPaused = computed(() => snapshot.value.auto.status === 'paused')
@@ -75,6 +80,17 @@ const previewPayload = computed(() => {
 function applySnapshot(next: RunnerSnapshot): void {
   snapshot.value = next
   Object.assign(auto, next.auto.config)
+}
+
+function showNotice(text: string, kind: 'success' | 'error' = 'success'): void {
+  notice.value = { kind, text }
+  if (noticeTimer) {
+    clearTimeout(noticeTimer)
+  }
+  noticeTimer = setTimeout(() => {
+    notice.value = null
+    noticeTimer = undefined
+  }, 3200)
 }
 
 async function request<T extends { snapshot?: RunnerSnapshot }>(path: string, body?: unknown, method?: 'GET' | 'POST'): Promise<T> {
@@ -99,7 +115,7 @@ async function connect(): Promise<void> {
     if (!payload.ok) {
       throw new Error(payload.error ?? 'Target is unavailable')
     }
-    message.value = 'Connected to target'
+    showNotice('Connected to target')
   })
 }
 
@@ -109,28 +125,28 @@ async function testConnection(): Promise<void> {
     if (!payload.ok) {
       throw new Error(payload.error ?? 'Health check failed')
     }
-    message.value = `Health check passed in ${payload.snapshot.connection.lastLatencyMs ?? 0}ms`
+    showNotice(`Health check passed in ${payload.snapshot.connection.lastLatencyMs ?? 0}ms`)
   })
 }
 
 async function startAuto(): Promise<void> {
   await runAction(async () => {
     await request('/api/silkworm/auto/start', { ...auto })
-    message.value = `Auto mode ${auto.scenario} started`
+    showNotice(`Auto mode ${auto.scenario} started`)
   })
 }
 
 async function pauseAuto(): Promise<void> {
   await runAction(async () => {
     await request('/api/silkworm/auto/pause', undefined, 'POST')
-    message.value = 'Auto mode paused'
+    showNotice('Auto mode paused')
   })
 }
 
 async function stopAuto(): Promise<void> {
   await runAction(async () => {
     await request('/api/silkworm/auto/stop', undefined, 'POST')
-    message.value = 'Auto mode stopped'
+    showNotice('Auto mode stopped')
   })
 }
 
@@ -165,7 +181,7 @@ async function sendManual(): Promise<void> {
       batchSize: Math.min(100, Math.max(1, Number(manualBatchSize.value))),
       duplicate: duplicateManualId.value,
     })
-    message.value = 'Manual payload queued'
+    showNotice('Manual payload queued')
   })
 }
 
@@ -191,18 +207,18 @@ function resetManual(): void {
 async function clearHistory(): Promise<void> {
   await runAction(async () => {
     await request('/api/silkworm/history/clear', undefined, 'POST')
-    message.value = 'History cleared'
+    showNotice('History cleared')
   })
 }
 
 async function runAction(action: () => Promise<void>): Promise<void> {
-  error.value = ''
+  notice.value = null
   busy.value = true
   try {
     await action()
   }
   catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause)
+    showNotice(cause instanceof Error ? cause.message : String(cause), 'error')
   }
   finally {
     busy.value = false
@@ -226,11 +242,16 @@ onMounted(async () => {
     applySnapshot(JSON.parse((event as MessageEvent).data) as RunnerSnapshot)
   })
   stream.addEventListener('error', () => {
-    error.value = 'Control stream interrupted · retrying'
+    showNotice('Control stream interrupted · retrying', 'error')
   })
 })
 
-onBeforeUnmount(() => stream?.close())
+onBeforeUnmount(() => {
+  stream?.close()
+  if (noticeTimer) {
+    clearTimeout(noticeTimer)
+  }
+})
 </script>
 
 <template>
@@ -251,24 +272,105 @@ onBeforeUnmount(() => stream?.close())
       </div>
     </header>
 
-    <section class="connection panel">
-      <div class="section-title"><div><strong>Target connection</strong><span>Shared by Auto Mode and Manual Send</span></div><span class="hint">Token is kept in memory only</span></div>
-      <div class="form-grid connection-grid">
-        <label class="field wide"><span>Target Base URL</span><input v-model="connection.baseUrl" type="url" placeholder="https://xxx.trycloudflare.com" /></label>
-        <label class="field wide"><span>Ingest token</span><input v-model="connection.token" type="password" placeholder="Optional bearer token" /></label>
-        <label class="field"><span>Client ID</span><input v-model="connection.clientId" type="text" /></label>
-        <label class="field"><span>Device ID</span><input v-model="connection.deviceId" type="text" /></label>
-        <label class="field"><span>Default source</span><select v-model="connection.source"><option v-for="item in sources" :key="item" :value="item">{{ item }}</option></select></label>
+    <Transition name="silkworm-notice">
+      <div v-if="notice" class="notice" :class="`notice-${notice.kind}`" role="status" aria-live="polite">
+        {{ notice.text }}
       </div>
-      <div v-if="message || error" class="connection-feedback" :class="{ failed: error }">{{ error || message }}</div>
+    </Transition>
+
+    <section class="connection panel">
+      <div class="connection-inline">
+        <label class="field"><span>Target Base URL</span><input v-model="connection.baseUrl" type="url" placeholder="https://xxx.trycloudflare.com" /></label>
+        <button class="link-button" type="button" @click="connectionSettingsOpen = true">Connection settings</button>
+      </div>
     </section>
 
     <section class="control-grid">
       <article class="panel mode-panel">
-        <div class="section-title"><div><strong>Auto Mode</strong><span>Generate complete JSON events</span></div><span class="mode-state" :class="statusClass(snapshot.auto.status)">{{ snapshot.auto.status }}</span></div>
-        <div class="form-grid">
+        <div class="section-title"><div><strong>Auto Mode</strong><span>{{ auto.scenario }} · {{ auto.rate }} events / second</span></div><span class="mode-state" :class="statusClass(snapshot.auto.status)">{{ snapshot.auto.status }}</span></div>
+        <div class="quick-form-grid">
           <label class="field"><span>Scenario</span><select v-model="auto.scenario"><option v-for="item in scenarios" :key="item" :value="item">{{ item }}</option></select></label>
           <label class="field"><span>Events / second</span><input v-model.number="auto.rate" type="number" min="0.1" max="100" step="0.1" /></label>
+        </div>
+        <div class="button-row">
+          <button class="button primary" type="button" :disabled="busy || !connected || autoRunning" @click="startAuto">{{ autoPaused ? 'Resume' : 'Start' }}</button>
+          <button class="button secondary" type="button" :disabled="busy || !autoRunning" @click="pauseAuto">Pause</button>
+          <button class="button danger" type="button" :disabled="busy || snapshot.auto.status === 'idle'" @click="stopAuto">Stop</button>
+          <button class="link-button" type="button" @click="autoSettingsOpen = true">Advanced settings</button>
+          <span v-if="!connected" class="control-hint">Connect to a target before starting</span>
+        </div>
+      </article>
+
+      <article class="panel mode-panel">
+        <div class="section-title"><div><strong>Manual Send</strong><span>Send one event with the common fields</span></div><button class="link-button" type="button" @click="manualDetailsOpen = true">Advanced details</button></div>
+        <div class="quick-form-grid manual-quick-grid">
+          <label class="field"><span>Level</span><select v-model="manual.level"><option v-for="item in levels" :key="item" :value="item">{{ item }}</option></select></label>
+          <label class="field"><span>Type</span><select v-model="manual.type"><option v-for="item in types" :key="item" :value="item">{{ item }}</option></select></label>
+          <label class="field wide"><span>Message</span><input v-model="manual.message" type="text" /></label>
+          <label class="field wide"><span>Content</span><textarea v-model="manual.content" rows="2" spellcheck="false" /></label>
+        </div>
+        <div class="button-row">
+          <button class="button primary" type="button" @click="sendManual">Send</button>
+          <button class="button secondary" type="button" @click="previewOpen = true">Preview payload</button>
+          <button class="link-button" type="button" @click="resetManual">Reset</button>
+        </div>
+      </article>
+    </section>
+
+    <button class="stats-strip panel" type="button" :aria-expanded="historyDrawerOpen" @click="historyDrawerOpen = true">
+      <span><small>Generated</small><strong>{{ snapshot.stats.generated }}</strong></span>
+      <span><small>Accepted</small><strong class="success-text">{{ snapshot.stats.accepted }}</strong></span>
+      <span><small>Failed</small><strong class="error-text">{{ snapshot.stats.failed }}</strong></span>
+      <span><small>Duplicate</small><strong>{{ snapshot.stats.duplicate }}</strong></span>
+      <span><small>Queue</small><strong>{{ snapshot.stats.queueLength }}</strong></span>
+      <span class="stats-strip-hint">History</span>
+    </button>
+
+    <Transition name="silkworm-drawer">
+      <div v-if="historyDrawerOpen" class="history-drawer-backdrop" @click.self="historyDrawerOpen = false">
+        <section class="history-drawer panel">
+        <div class="section-title"><div><strong>Run history</strong><span>Latest 500 attempts</span></div><div class="history-actions"><button class="icon-button" type="button" aria-label="Clear history" title="Clear history" @click="clearHistory"><IconGlyph name="trash" /></button><button class="icon-button" type="button" aria-label="Close history" title="Close history" @click="historyDrawerOpen = false"><IconGlyph name="close" /></button></div></div>
+        <div class="stats-row drawer-stats">
+          <div class="stat panel"><span>Generated</span><strong>{{ snapshot.stats.generated }}</strong></div>
+          <div class="stat panel"><span>Accepted</span><strong class="success-text">{{ snapshot.stats.accepted }}</strong></div>
+          <div class="stat panel"><span>Failed</span><strong class="error-text">{{ snapshot.stats.failed }}</strong></div>
+          <div class="stat panel"><span>Duplicate</span><strong>{{ snapshot.stats.duplicate }}</strong></div>
+          <div class="stat panel"><span>Queue</span><strong>{{ snapshot.stats.queueLength }}</strong></div>
+        </div>
+        <div v-if="!snapshot.history.length" class="empty-state"><strong>No send attempts yet</strong><span>Connect a target, then start Auto Mode or send a manual event.</span></div>
+        <div v-else class="history-list">
+          <div v-for="attempt in snapshot.history" :key="attempt.id" class="history-row">
+            <time>{{ formatTime(attempt.startedAt) }}</time>
+            <span class="mode-pill">{{ attempt.mode }}</span>
+            <span class="history-summary">{{ attempt.summary }}</span>
+            <span class="attempt-count">{{ attempt.eventIds.length }} events</span>
+            <span class="status-pill" :class="statusClass(attempt.status)">{{ attempt.status }}</span>
+            <span class="history-error">{{ attempt.error ?? '' }}</span>
+          </div>
+        </div>
+        </section>
+      </div>
+    </Transition>
+
+    <Transition name="silkworm-modal">
+      <div v-if="connectionSettingsOpen" class="modal-backdrop" @click.self="connectionSettingsOpen = false">
+        <section class="modal-card panel">
+        <div class="section-title"><div><strong>Connection settings</strong><span>Advanced target options</span></div><button class="icon-button" type="button" aria-label="Close connection settings" title="Close" @click="connectionSettingsOpen = false"><IconGlyph name="close" /></button></div>
+        <div class="form-grid connection-grid">
+          <label class="field wide"><span>Ingest token</span><input v-model="connection.token" type="password" placeholder="Optional bearer token" /></label>
+          <label class="field"><span>Client ID</span><input v-model="connection.clientId" type="text" /></label>
+          <label class="field"><span>Device ID</span><input v-model="connection.deviceId" type="text" /></label>
+          <label class="field"><span>Default source</span><select v-model="connection.source"><option v-for="item in sources" :key="item" :value="item">{{ item }}</option></select></label>
+        </div>
+        </section>
+      </div>
+    </Transition>
+
+    <Transition name="silkworm-modal">
+      <div v-if="autoSettingsOpen" class="modal-backdrop" @click.self="autoSettingsOpen = false">
+        <section class="modal-card panel">
+        <div class="section-title"><div><strong>Auto settings</strong><span>Advanced generation options</span></div><button class="icon-button" type="button" aria-label="Close auto settings" title="Close" @click="autoSettingsOpen = false"><IconGlyph name="close" /></button></div>
+        <div class="form-grid">
           <label class="field"><span>Batch size</span><input v-model.number="auto.batchSize" type="number" min="1" max="100" /></label>
           <label class="field"><span>Duration seconds</span><input v-model.number="auto.durationSeconds" type="number" min="0" placeholder="0 = forever" /></label>
           <label class="field wide"><span>Seed</span><input v-model="auto.seed" type="text" /></label>
@@ -276,28 +378,22 @@ onBeforeUnmount(() => stream?.close())
           <label class="field"><span>Auto device ID</span><input v-model="auto.deviceId" type="text" /></label>
         </div>
         <label class="check-row"><input v-model="auto.flushErrors" type="checkbox" /><span>Flush error events immediately</span></label>
-        <div class="button-row">
-          <button class="button primary" type="button" :disabled="busy || !connected || autoRunning" @click="startAuto">{{ autoPaused ? 'Resume' : 'Start' }}</button>
-          <button class="button secondary" type="button" :disabled="busy || !autoRunning" @click="pauseAuto">Pause</button>
-          <button class="button danger" type="button" :disabled="busy || snapshot.auto.status === 'idle'" @click="stopAuto">Stop</button>
-          <span v-if="!connected" class="control-hint">Connect to a target before starting</span>
-        </div>
-      </article>
+        </section>
+      </div>
+    </Transition>
 
-      <article class="panel mode-panel">
-        <div class="section-title"><div><strong>Manual Send</strong><span>Construct one complete event or a batch</span></div><button class="link-button" type="button" @click="resetManual">Reset</button></div>
+    <Transition name="silkworm-modal">
+      <div v-if="manualDetailsOpen" class="modal-backdrop" @click.self="manualDetailsOpen = false">
+        <section class="modal-card panel modal-wide">
+        <div class="section-title"><div><strong>Manual event details</strong><span>Optional fields for the payload</span></div><button class="icon-button" type="button" aria-label="Close manual event details" title="Close" @click="manualDetailsOpen = false"><IconGlyph name="close" /></button></div>
         <div class="form-grid">
           <label class="field wide"><span>Event ID</span><input v-model="manual.id" type="text" /></label>
           <label class="field wide"><span>Timestamp</span><input v-model="manual.timestamp" type="text" /></label>
-          <label class="field"><span>Client ID</span><input v-model="manual.clientId" type="text" /></label>
-          <label class="field"><span>Device ID</span><input v-model="manual.deviceId" type="text" /></label>
-          <label class="field"><span>Level</span><select v-model="manual.level"><option v-for="item in levels" :key="item" :value="item">{{ item }}</option></select></label>
-          <label class="field"><span>Type</span><select v-model="manual.type"><option v-for="item in types" :key="item" :value="item">{{ item }}</option></select></label>
           <label class="field"><span>Source</span><select v-model="manual.source"><option v-for="item in sources" :key="item" :value="item">{{ item }}</option></select></label>
           <label class="field"><span>Content format</span><select v-model="manual.contentFormat"><option v-for="item in formats" :key="item" :value="item">{{ item }}</option></select></label>
           <label class="field"><span>Tag</span><input v-model="manual.tag" type="text" /></label>
-          <label class="field wide"><span>Message</span><input v-model="manual.message" type="text" /></label>
-          <label class="field wide"><span>Content</span><textarea v-model="manual.content" rows="4" spellcheck="false" /></label>
+          <label class="field"><span>Client ID</span><input v-model="manual.clientId" type="text" /></label>
+          <label class="field"><span>Device ID</span><input v-model="manual.deviceId" type="text" /></label>
           <label class="field wide"><span>Error</span><input v-model="manual.error" type="text" /></label>
           <label class="field wide"><span>Stack trace</span><textarea v-model="manual.stackTrace" rows="3" spellcheck="false" /></label>
           <label class="field wide"><span>Metadata JSON</span><textarea v-model="manual.metadata" rows="3" spellcheck="false" /></label>
@@ -306,41 +402,17 @@ onBeforeUnmount(() => stream?.close())
           <label class="field compact"><span>Batch count</span><input v-model.number="manualBatchSize" type="number" min="1" max="100" /></label>
           <label class="check-row"><input v-model="duplicateManualId" type="checkbox" /><span>Duplicate event ID</span></label>
         </div>
-        <div class="button-row">
-          <button class="button primary" type="button" @click="sendManual">Send</button>
-          <button class="button secondary" type="button" @click="previewOpen = true">Preview payload</button>
-        </div>
-      </article>
-    </section>
-
-    <section class="stats-row">
-      <div class="stat panel"><span>Generated</span><strong>{{ snapshot.stats.generated }}</strong></div>
-      <div class="stat panel"><span>Accepted</span><strong class="success-text">{{ snapshot.stats.accepted }}</strong></div>
-      <div class="stat panel"><span>Failed</span><strong class="error-text">{{ snapshot.stats.failed }}</strong></div>
-      <div class="stat panel"><span>Duplicate</span><strong>{{ snapshot.stats.duplicate }}</strong></div>
-      <div class="stat panel"><span>Queue</span><strong>{{ snapshot.stats.queueLength }}</strong></div>
-    </section>
-
-    <section class="panel history-panel">
-      <div class="section-title"><div><strong>Send History</strong><span>Latest 500 attempts</span></div><div class="history-actions"><span v-if="message" class="message">{{ message }}</span><span v-if="error" class="error-message">{{ error }}</span><button class="link-button" type="button" @click="clearHistory">Clear history</button></div></div>
-      <div v-if="!snapshot.history.length" class="empty-state"><strong>No send attempts yet</strong><span>Connect a target, then start Auto Mode or send a manual event.</span></div>
-      <div v-else class="history-list">
-        <div v-for="attempt in snapshot.history" :key="attempt.id" class="history-row">
-          <time>{{ formatTime(attempt.startedAt) }}</time>
-          <span class="mode-pill">{{ attempt.mode }}</span>
-          <span class="history-summary">{{ attempt.summary }}</span>
-          <span class="attempt-count">{{ attempt.eventIds.length }} events</span>
-          <span class="status-pill" :class="statusClass(attempt.status)">{{ attempt.status }}</span>
-          <span class="history-error">{{ attempt.error ?? '' }}</span>
-        </div>
+        </section>
       </div>
-    </section>
+    </Transition>
 
-    <div v-if="previewOpen" class="modal-backdrop" @click.self="previewOpen = false">
-      <section class="preview-modal panel">
-        <div class="section-title"><div><strong>Payload preview</strong><span>Authorization is never included here</span></div><button class="link-button" type="button" @click="previewOpen = false">Close</button></div>
+    <Transition name="silkworm-modal">
+      <div v-if="previewOpen" class="modal-backdrop" @click.self="previewOpen = false">
+        <section class="preview-modal panel">
+        <div class="section-title"><div><strong>Payload preview</strong><span>Authorization is never included here</span></div><button class="icon-button" type="button" aria-label="Close payload preview" title="Close" @click="previewOpen = false"><IconGlyph name="close" /></button></div>
         <pre>{{ previewPayload }}</pre>
-      </section>
-    </div>
+        </section>
+      </div>
+    </Transition>
   </main>
 </template>

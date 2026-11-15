@@ -36,20 +36,6 @@ const vite = start(viteCli, [
   '4330',
 ])
 
-function openBrowser(url) {
-  if (process.platform === 'win32') {
-    spawn('explorer.exe', [url], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
-  }
-  else if (process.platform === 'darwin') {
-    spawn('open', [url], { detached: true, stdio: 'ignore' }).unref()
-  }
-  else {
-    spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref()
-  }
-}
-
-setTimeout(openBrowser, 700, 'http://127.0.0.1:4330').unref()
-
 function stop() {
   for (const child of children) {
     if (child.exitCode === null) {
