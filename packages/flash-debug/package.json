@@ -26,10 +26,9 @@
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "bin": {
-    "flash-debug": "./bin/flash-debug.mjs"
+    "flash-debug": "./dist/bin.mjs"
   },
   "files": [
-    "bin",
     "dist"
   ],
   "engines": {

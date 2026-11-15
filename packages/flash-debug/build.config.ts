@@ -5,5 +5,6 @@ export default defineBuildConfig(mergeDefaultBuildConfig({
   entries: [
     'src/index',
     { input: 'src/config', name: 'config' },
+    { input: 'src/bin', name: 'bin' },
   ],
 }))
