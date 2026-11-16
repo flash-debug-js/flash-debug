@@ -6,6 +6,7 @@ import IconGlyph from './components/IconGlyph.vue'
 import type { IconName } from './components/IconGlyph.vue'
 import VirtualList from './components/VirtualList.vue'
 import { usePersistentState } from './utils/persistent-state'
+import { useRangeSelection } from './utils/range-selection'
 import { createLogWorkerClient } from './worker/log-worker-client'
 import type { LogListItem, LogSnapshot } from './worker/log-worker-types'
 import { createEmptyLogSnapshot } from './worker/log-worker-types'
@@ -13,10 +14,10 @@ import { createEmptyLogSnapshot } from './worker/log-worker-types'
 const logSnapshot = shallowRef<LogSnapshot>(createEmptyLogSnapshot())
 const selected = shallowRef<DebugLogRecord | null>(null)
 const selectedId = ref<string | null>(null)
+const selectedLogIds = ref<string[]>([])
 const query = ref('')
 const levelOptions: readonly DebugLogLevel[] = ['debug', 'info', 'warning', 'error']
 const selectedLevels = usePersistentState<DebugLogLevel[]>('levels', [])
-const levelAnchor = ref<number | null>(null)
 const source = usePersistentState<'all' | DebugLogRecord['source']>('source', 'all')
 const connected = ref(false)
 const error = ref('')
@@ -37,6 +38,9 @@ const unsubscribeWorker = workerClient.subscribe((snapshot) => {
 let eventSource: EventSource | undefined
 
 const filteredLogs = computed(() => logSnapshot.value.items)
+const filteredLogIds = computed(() => filteredLogs.value.map(record => record.id))
+const levelSelection = useRangeSelection(() => levelOptions, selectedLevels)
+const logSelection = useRangeSelection(() => filteredLogIds.value, selectedLogIds)
 const sourceOptions = computed(() => logSnapshot.value.sources.map(item => item.value))
 const captureFilterDefinitions = computed(() => session.value?.source?.filters.filter(filter => filter.scope === 'capture') ?? [])
 const captureFilterOptions = computed(() => logSnapshot.value.filterOptions)
@@ -88,47 +92,15 @@ function levelIcon(value: 'all' | DebugLogLevel): IconName {
 }
 
 function handleLevelClick(value: DebugLogLevel, event: MouseEvent): void {
-  const index = levelOptions.indexOf(value)
-  if (index < 0) {
-    return
-  }
-
-  const additive = event.ctrlKey || event.metaKey
-  if (event.shiftKey && levelAnchor.value !== null) {
-    const start = Math.min(levelAnchor.value, index)
-    const end = Math.max(levelAnchor.value, index)
-    const range = levelOptions.slice(start, end + 1)
-    selectedLevels.value = additive
-      ? [...new Set([...selectedLevels.value, ...range])].sort((a, b) => levelOptions.indexOf(a) - levelOptions.indexOf(b))
-      : [...range]
-  }
-  else if (additive) {
-    selectedLevels.value = selectedLevels.value.includes(value)
-      ? selectedLevels.value.filter(item => item !== value)
-      : [...selectedLevels.value, value].sort((a, b) => levelOptions.indexOf(a) - levelOptions.indexOf(b))
-  }
-  else {
-    selectedLevels.value = [value]
-  }
-
-  levelAnchor.value = index
+  levelSelection.handleClick(value, event)
 }
 
 function clearLevelSelection(): void {
-  selectedLevels.value = []
-  levelAnchor.value = null
+  levelSelection.clear()
 }
 
 function toggleLevelCheckbox(value: DebugLogLevel): void {
-  const index = levelOptions.indexOf(value)
-  if (index < 0) {
-    return
-  }
-
-  selectedLevels.value = selectedLevels.value.includes(value)
-    ? selectedLevels.value.filter(item => item !== value)
-    : [...selectedLevels.value, value].sort((a, b) => levelOptions.indexOf(a) - levelOptions.indexOf(b))
-  levelAnchor.value = index
+  levelSelection.toggle(value)
 }
 
 function sourceIcon(value: 'all' | DebugLogRecord['source']): IconName {
@@ -254,6 +226,10 @@ function handleLogListScroll(state: { atBottom: boolean, user: boolean }): void 
   if (state.user) {
     autoScroll.value = false
   }
+}
+
+function selectLog(item: LogListItem, event: MouseEvent): void {
+  logSelection.handleClick(item.id, event)
 }
 
 function handleKeydown(event: KeyboardEvent): void {
@@ -488,7 +464,13 @@ onBeforeUnmount(() => {
           @scroll-state="handleLogListScroll"
         >
           <template #default="{ item: record }">
-            <button class="log-row" :class="{ selected: selectedId === record.id }" type="button" @click="void openRecord(record)">
+            <button
+              class="log-row"
+              :class="{ selected: selectedLogIds.includes(record.id) }"
+              type="button"
+              @click="selectLog(record, $event)"
+              @dblclick="void openRecord(record)"
+            >
               <time>{{ new Date(record.timestamp).toLocaleTimeString() }}</time>
               <span class="level-badge" :class="`level-${record.level}`"><IconGlyph :name="levelIcon(record.level)" :size="12" />{{ record.level }}</span>
               <span class="source-badge">{{ record.source }}</span>
