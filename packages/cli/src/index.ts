@@ -16,7 +16,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
     .option('--host <host>', 'Nitro host', { default: '127.0.0.1' })
     .option('--no-tunnel', 'Start only the local Inspector')
     .option('--mode <mode>', 'Tunnel mode: quick or named', { default: 'quick' })
-    .option('--hostname <hostname>', 'Named tunnel hostname')
+    .option('--subdomain <pattern>', 'Named tunnel subdomain template such as fd-{rand:4}')
     .option('--zone <zone>', 'Cloudflare DNS zone')
     .option('--adapter <adapter>', 'Log adapter: adb or hdc')
     .option('--device <deviceId>', 'Device ID for the selected adapter')
@@ -27,7 +27,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
       host?: string
       tunnel?: boolean
       mode?: 'quick' | 'named'
-      hostname?: string
+      subdomain?: string
       zone?: string
       adapter?: string
       device?: string
@@ -43,7 +43,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
     host?: string
     tunnel?: boolean
     mode?: 'quick' | 'named'
-    hostname?: string
+    subdomain?: string
     zone?: string
     adapter?: string
     device?: string
@@ -56,7 +56,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
       port: Number(options.port ?? DEFAULT_DEBUG_PORT),
       tunnel: options.tunnel,
       mode: options.mode,
-      hostname: options.hostname,
+      subdomain: options.subdomain,
       zone: options.zone,
       client,
       onLog: (line, stream) => {

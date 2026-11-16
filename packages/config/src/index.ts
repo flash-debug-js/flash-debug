@@ -7,7 +7,7 @@ export interface FlashDebugConfig {
   }
   tunnel?: {
     mode?: 'quick' | 'named'
-    hostname?: string
+    subdomain?: string
     zone?: string
     cloudflaredPath?: string
   }

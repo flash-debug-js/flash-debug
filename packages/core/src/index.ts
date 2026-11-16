@@ -1,6 +1,7 @@
 import type { DebugClientAdapter, DebugClientSession } from '@flash-debug/client'
 import type { DebugFilterValues, DebugSessionSnapshot, DebugSourceDescriptor } from '@flash-debug/types'
 import type { EmbeddedTunnelSession } from '@flash-tunnel/sdk'
+import { randomInt } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
@@ -17,7 +18,7 @@ export interface DebugRuntimeOptions {
   serverRoot?: string
   tunnel?: boolean
   mode?: 'quick' | 'named'
-  hostname?: string
+  subdomain?: string
   zone?: string
   cloudflaredPath?: string
   apiToken?: string
@@ -40,6 +41,27 @@ export interface DebugRuntime {
   stop: () => Promise<void>
 }
 
+const SUBDOMAIN_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const DEFAULT_SUBDOMAIN_TEMPLATE = 'fd-{rand}'
+
+function randomToken(length: number): string {
+  return Array.from({ length }, () => SUBDOMAIN_ALPHABET[randomInt(SUBDOMAIN_ALPHABET.length)]).join('')
+}
+
+function resolveSubdomain(template = DEFAULT_SUBDOMAIN_TEMPLATE): string {
+  const resolved = template.replace(/\{rand(?::(\d+))?\}/g, (_match, length: string | undefined) => randomToken(Number(length ?? 4)))
+
+  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(resolved)) {
+    throw new Error(`Invalid subdomain template "${template}"`)
+  }
+
+  return resolved
+}
+
+function createHostname(zone: string, subdomain?: string): string {
+  return `${resolveSubdomain(subdomain)}.${zone}`
+}
+
 function defaultServerRoot(): string {
   const entry = require.resolve('@flash-debug/server')
   return resolve(dirname(entry), '..')
@@ -47,6 +69,10 @@ function defaultServerRoot(): string {
 
 /** Start the local Inspector origin and optionally expose it through Tunnel. */
 export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Promise<DebugRuntime> {
+  const mode = options.mode ?? 'quick'
+  const hostname = mode === 'named' && options.zone
+    ? createHostname(options.zone, options.subdomain)
+    : undefined
   let tunnel: EmbeddedTunnelSession | undefined
   let clientSession: DebugClientSession | undefined
   let logSink: HttpLogSink | undefined
@@ -127,8 +153,8 @@ export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Prom
       tunnel = await startTunnel({
         localUrl: server.localUrl,
         cwd: options.cwd ?? process.cwd(),
-        mode: options.mode ?? 'quick',
-        hostname: options.hostname,
+        mode,
+        hostname,
         zone: options.zone,
         cloudflaredPath: options.cloudflaredPath,
         apiToken: options.apiToken,
