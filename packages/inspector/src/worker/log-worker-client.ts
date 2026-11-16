@@ -17,6 +17,7 @@ export interface LogWorkerClient {
   enqueue: (record: DebugLogRecord) => void
   setFilter: (filter: LogFilter) => Promise<LogSnapshot>
   getRecord: (id: string) => Promise<DebugLogRecord | null>
+  clear: () => Promise<LogSnapshot>
   subscribe: (listener: (snapshot: LogSnapshot) => void) => () => void
   dispose: () => void
 }
@@ -147,6 +148,24 @@ export function createLogWorkerClient(options: LogWorkerClientOptions = {}): Log
     })
   }
 
+  function clear(): Promise<LogSnapshot> {
+    pendingRecords = []
+    if (flushTimer) {
+      clearTimeout(flushTimer)
+      flushTimer = undefined
+    }
+
+    return runOperation(async (api) => {
+      try {
+        return publish(await api.clear())
+      }
+      catch (error) {
+        manager.terminate()
+        throw error
+      }
+    })
+  }
+
   function subscribe(listener: (nextSnapshot: LogSnapshot) => void): () => void {
     listeners.add(listener)
     listener(snapshot)
@@ -168,6 +187,7 @@ export function createLogWorkerClient(options: LogWorkerClientOptions = {}): Log
     enqueue,
     setFilter,
     getRecord,
+    clear,
     subscribe,
     dispose,
   }

@@ -38,4 +38,13 @@ describe('useRangeSelection', () => {
     selection.handleClick('d', mouseEvent({ shiftKey: true }))
     expect(selected.value).toEqual(['b', 'c', 'd'])
   })
+
+  it('clears a single selection when the same value is clicked again', () => {
+    const selected = ref<string[]>([])
+    const selection = useRangeSelection(() => ['a', 'b', 'c'], selected, { toggleOnRepeatedClick: true })
+
+    selection.handleClick('b', mouseEvent())
+    selection.handleClick('b', mouseEvent())
+    expect(selected.value).toEqual([])
+  })
 })

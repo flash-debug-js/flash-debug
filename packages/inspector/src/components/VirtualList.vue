@@ -88,9 +88,12 @@ onMounted(() => {
     resizeObserver = new ResizeObserver(updateViewport)
     resizeObserver.observe(viewport.value)
   }
+  if (props.follow) {
+    void nextTick(() => scrollToEnd())
+  }
 })
 
-watch(() => props.items.length, async () => {
+watch([() => props.items.length, () => props.follow], async () => {
   await nextTick()
   if (viewport.value) {
     if (props.follow) {

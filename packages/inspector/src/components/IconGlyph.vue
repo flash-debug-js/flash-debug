@@ -1,5 +1,5 @@
 <script setup lang="ts">
-export type IconName = 'activity' | 'arrow-down' | 'database' | 'error' | 'filter' | 'info' | 'layers' | 'rows' | 'search' | 'spark' | 'warning'
+export type IconName = 'activity' | 'arrow-down' | 'close' | 'database' | 'error' | 'filter' | 'help' | 'info' | 'layers' | 'qr' | 'rows' | 'search' | 'spark' | 'switch' | 'warning'
 
 withDefaults(defineProps<{
   name: IconName
@@ -52,10 +52,28 @@ withDefaults(defineProps<{
       <rect x="4" y="10.5" width="16" height="3" rx="1" />
       <rect x="4" y="16" width="16" height="3" rx="1" />
     </template>
+    <template v-else-if="name === 'switch'">
+      <path d="M5 7h13" />
+      <path d="m15 4 3 3-3 3" />
+      <path d="M19 17H6" />
+      <path d="m9 14-3 3 3 3" />
+    </template>
+    <template v-else-if="name === 'close'">
+      <path d="m7 7 10 10M17 7 7 17" />
+    </template>
     <template v-else-if="name === 'info'">
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 10.7v5.1" />
       <path d="M12 7.3h.01" />
+    </template>
+    <template v-else-if="name === 'help'">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9.7 9.3a2.5 2.5 0 1 1 4.1 1.9c-.9.7-1.8 1.2-1.8 2.6" />
+      <path d="M12 17.2h.01" />
+    </template>
+    <template v-else-if="name === 'qr'">
+      <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" />
+      <path d="M14 14h3v3h-3zM18 18h2v2h-2zM17 14h3" />
     </template>
     <template v-else-if="name === 'warning'">
       <path d="m12 3 9 16H3L12 3Z" />

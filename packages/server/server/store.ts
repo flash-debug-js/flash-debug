@@ -63,6 +63,15 @@ class LogStore {
     return items
   }
 
+  clear(): { deleted: number, cursor: number } {
+    const deleted = this.records.length - this.orderStart
+    this.records.length = 0
+    this.ids.clear()
+    this.orderStart = 0
+    this.dropped = 0
+    return { deleted, cursor: this.cursor }
+  }
+
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)

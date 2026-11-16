@@ -2,6 +2,8 @@
 import type { DebugLogRecord } from '@flash-debug/types'
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { contentFor, detectContentFormat, formattedContent, languageFor } from './content-format'
+import BaseDialog from './components/BaseDialog.vue'
+import { useEscapeClose } from './utils/use-escape-close'
 
 const props = defineProps<{ record: DebugLogRecord | null }>()
 const emit = defineEmits<{ close: [] }>()
@@ -10,6 +12,8 @@ const editorError = ref('')
 const editorReady = ref(false)
 const editorLoading = ref(false)
 const hasOpened = ref(false)
+
+useEscapeClose(() => props.record !== null, () => emit('close'))
 
 function sendContent(): void {
   const record = props.record
@@ -81,9 +85,8 @@ function copyContent(): void {
 </script>
 
 <template>
-  <div class="modal-backdrop" :class="{ 'is-hidden': !record }" @click.self="emit('close')">
-    <section class="detail-modal" role="dialog" aria-modal="true" aria-label="Log details" :aria-hidden="!record">
-      <template v-if="record">
+  <BaseDialog :open="!!record" ariaLabel="Log details" panel-class="detail-modal" @close="emit('close')">
+    <template v-if="record">
       <header class="detail-header">
         <div class="detail-title">
           <span class="level-badge" :class="`level-${record.level}`">{{ record.level }}</span>
@@ -100,7 +103,7 @@ function copyContent(): void {
         <div><dt>Format</dt><dd>{{ detectContentFormat(record) }}</dd></div>
         <div><dt>Event</dt><dd>{{ record.id }}</dd></div>
       </dl>
-      </template>
+    </template>
 
       <div class="detail-editor">
         <div v-if="editorLoading && !editorError" class="editor-loading" role="status" aria-live="polite">
@@ -115,6 +118,5 @@ function copyContent(): void {
         <span>{{ contentFor(record).length.toLocaleString() }} characters</span>
         <button type="button" class="copy-button" @click="copyContent">Copy content</button>
       </footer>
-    </section>
-  </div>
+  </BaseDialog>
 </template>

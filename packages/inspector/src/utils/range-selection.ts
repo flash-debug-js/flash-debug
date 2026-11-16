@@ -8,6 +8,10 @@ export interface RangeSelection<T> {
   clear: () => void
 }
 
+export interface RangeSelectionOptions {
+  toggleOnRepeatedClick?: boolean
+}
+
 function orderedUnique<T>(items: readonly T[], values: readonly T[]): T[] {
   const selected = new Set(values)
   return items.filter(item => selected.has(item))
@@ -18,7 +22,7 @@ function orderedUnique<T>(items: readonly T[], values: readonly T[]): T[] {
  * The anchor is stored by value so filtering or list updates do not move it
  * to an unrelated row.
  */
-export function useRangeSelection<T>(items: () => readonly T[], selection: Ref<T[]>): RangeSelection<T> {
+export function useRangeSelection<T>(items: () => readonly T[], selection: Ref<T[]>, options: RangeSelectionOptions = {}): RangeSelection<T> {
   const anchor = shallowRef<T | null>(null)
 
   function toggle(value: T): void {
@@ -52,7 +56,10 @@ export function useRangeSelection<T>(items: () => readonly T[], selection: Ref<T
       return
     }
     else {
-      selection.value = [value]
+      const repeated = options.toggleOnRepeatedClick
+        && selection.value.length === 1
+        && selection.value[0] === value
+      selection.value = repeated ? [] : [value]
     }
 
     anchor.value = value
