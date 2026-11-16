@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import type { FlashDebugLogRecord } from '../src'
+import { describe, expect, it } from 'vitest'
 import { createLogger } from '../src'
 
 function response(status: number, body = ''): Response {
@@ -18,7 +18,7 @@ function payload(request: RequestInit): { items: FlashDebugLogRecord[], sdk: { n
   }
 }
 
-describe('Flash Debug logger', () => {
+describe('flash Debug logger', () => {
   it('builds a protocol v1 batch and sends authorization', async () => {
     const requests: RequestInit[] = []
     const logger = createLogger({
@@ -43,7 +43,7 @@ describe('Flash Debug logger', () => {
     expect(requests).toHaveLength(1)
     expect(requests[0]?.headers).toEqual({
       'content-type': 'application/json',
-      authorization: 'Bearer ingest-token',
+      'authorization': 'Bearer ingest-token',
     })
     expect(payload(requests[0] ?? {}).items[0]).toMatchObject({
       id: record.id,

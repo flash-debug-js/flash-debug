@@ -65,13 +65,13 @@ export interface FlashDebugLoggerOptions {
   redact?: (record: FlashDebugLogRecord) => FlashDebugLogRecord;
 }
 export interface FlashDebugLogger {
-  log(input: FlashDebugLogInput): FlashDebugLogRecord;
-  debug(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord;
-  info(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord;
-  warning(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord;
-  error(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord;
-  flush(): Promise<void>;
-  close(): Promise<void>;
+  log: (input: FlashDebugLogInput) => FlashDebugLogRecord;
+  debug: (message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>) => FlashDebugLogRecord;
+  info: (message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>) => FlashDebugLogRecord;
+  warning: (message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>) => FlashDebugLogRecord;
+  error: (message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>) => FlashDebugLogRecord;
+  flush: () => Promise<void>;
+  close: () => Promise<void>;
   readonly queueLength: number;
 }
 export declare class FlashDebugUploadError extends Error {

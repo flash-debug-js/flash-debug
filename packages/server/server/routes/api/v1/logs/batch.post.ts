@@ -1,5 +1,6 @@
 import type { DebugLogRecord } from '@flash-debug/types'
 import type { HTTPEvent } from 'h3'
+import process from 'node:process'
 import { defineHandler, HTTPError } from 'nitro'
 import { readBody } from 'nitro/h3'
 import { logStore } from '../../../../store'

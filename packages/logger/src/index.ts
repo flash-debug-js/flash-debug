@@ -72,13 +72,13 @@ export interface FlashDebugLoggerOptions {
 }
 
 export interface FlashDebugLogger {
-  log(input: FlashDebugLogInput): FlashDebugLogRecord
-  debug(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord
-  info(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord
-  warning(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord
-  error(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord
-  flush(): Promise<void>
-  close(): Promise<void>
+  log: (input: FlashDebugLogInput) => FlashDebugLogRecord
+  debug: (message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>) => FlashDebugLogRecord
+  info: (message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>) => FlashDebugLogRecord
+  warning: (message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>) => FlashDebugLogRecord
+  error: (message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>) => FlashDebugLogRecord
+  flush: () => Promise<void>
+  close: () => Promise<void>
   readonly queueLength: number
 }
 
@@ -123,8 +123,8 @@ const DEFAULT_MAX_RETRIES = 3
 const DEFAULT_RETRY_BASE_MS = 250
 const DEFAULT_RETRY_MAX_MS = 10_000
 
-const SENSITIVE_KEY_PATTERN = /(?:authorization|cookie|password|secret|token|appkey|accesskey|privatekey|set-cookie)/i
-const BEARER_PATTERN = /Bearer\s+[A-Za-z0-9._~+/=-]+/gi
+const SENSITIVE_KEY_PATTERN = /authorization|cookie|password|secret|token|appkey|accesskey|privatekey|set-cookie/i
+const BEARER_PATTERN = /Bearer\s+[\w.~+/=-]+/gi
 const SENSITIVE_TEXT_PATTERN = /(authorization|cookie|password|secret|token|appKey|accessKey)\s*[:=]\s*("[^"]*"|'[^']*'|[^\s,;]+)/gi
 
 export function createLogger(options: FlashDebugLoggerOptions): FlashDebugLogger {
@@ -188,7 +188,7 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
     this.retryMaxMs = positiveInteger(options.retryMaxMs, DEFAULT_RETRY_MAX_MS)
     this.request = options.fetch ?? globalThis.fetch
     if (typeof this.request !== 'function') {
-      throw new Error('Flash Debug logger requires a fetch implementation')
+      throw new TypeError('Flash Debug logger requires a fetch implementation')
     }
     this.onError = options.onError
     this.onDrop = options.onDrop
@@ -436,7 +436,9 @@ function normalizeError(error: unknown, stackTrace?: string): Pick<FlashDebugLog
       errorInfo: {
         name: error.name,
         ...(readErrorCode(error)
-          ? { code: readErrorCode(error) }
+          ? {
+              code: readErrorCode(error),
+            }
           : {}),
         message: error.message,
         ...(error.stack
@@ -448,7 +450,11 @@ function normalizeError(error: unknown, stackTrace?: string): Pick<FlashDebugLog
 
   return {
     ...(error !== undefined
-      ? { error: typeof error === 'string' ? error : safeStringify(error) }
+      ? {
+          error: typeof error === 'string'
+            ? error
+            : safeStringify(error),
+        }
       : {}),
     ...(stackTrace !== undefined
       ? { stackTrace }
@@ -577,4 +583,3 @@ async function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promis
     }
   }
 }
-

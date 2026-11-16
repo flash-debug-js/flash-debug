@@ -21,8 +21,8 @@ const DEFAULT_CLOSE_TIMEOUT_MS = 5e3;
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_BASE_MS = 250;
 const DEFAULT_RETRY_MAX_MS = 1e4;
-const SENSITIVE_KEY_PATTERN = /(?:authorization|cookie|password|secret|token|appkey|accesskey|privatekey|set-cookie)/i;
-const BEARER_PATTERN = /Bearer\s+[A-Za-z0-9._~+/=-]+/gi;
+const SENSITIVE_KEY_PATTERN = /authorization|cookie|password|secret|token|appkey|accesskey|privatekey|set-cookie/i;
+const BEARER_PATTERN = /Bearer\s+[\w.~+/=-]+/gi;
 const SENSITIVE_TEXT_PATTERN = /(authorization|cookie|password|secret|token|appKey|accessKey)\s*[:=]\s*("[^"]*"|'[^']*'|[^\s,;]+)/gi;
 function createLogger(options) {
 	return new FlashDebugLoggerImpl(options);
@@ -75,7 +75,7 @@ var FlashDebugLoggerImpl = class {
 		this.retryBaseMs = positiveInteger(options.retryBaseMs, DEFAULT_RETRY_BASE_MS);
 		this.retryMaxMs = positiveInteger(options.retryMaxMs, DEFAULT_RETRY_MAX_MS);
 		this.request = options.fetch ?? globalThis.fetch;
-		if (typeof this.request !== "function") throw new Error("Flash Debug logger requires a fetch implementation");
+		if (typeof this.request !== "function") throw new TypeError("Flash Debug logger requires a fetch implementation");
 		this.onError = options.onError;
 		this.onDrop = options.onDrop;
 		this.customRedact = options.redact;
