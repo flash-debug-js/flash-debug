@@ -5,9 +5,11 @@ import ConfirmDialog from './ConfirmDialog.vue'
 import HelpDialog from './HelpDialog.vue'
 import LogDetailModal from './LogDetailModal.vue'
 import QrDialog from './QrDialog.vue'
+import BaseDropdown from './components/BaseDropdown.vue'
 import IconGlyph from './components/IconGlyph.vue'
 import type { IconName } from './components/IconGlyph.vue'
 import VirtualList from './components/VirtualList.vue'
+import { useLoadingQueue } from './utils/loading-queue'
 import { usePersistentState } from './utils/persistent-state'
 import { mergePastedLogs, parsePastedLogs } from './utils/pasted-logs'
 import { useRangeSelection } from './utils/range-selection'
@@ -38,8 +40,13 @@ const copyNotice = ref('')
 const clearLogsDialogOpen = ref(false)
 const helpDialogOpen = ref(false)
 const qrDialogOpen = ref(false)
+const mobileMenuOpen = ref(false)
 const currentOrigin = ref('')
 const searchInputRef = ref<HTMLInputElement>()
+const loadingQueue = useLoadingQueue()
+const loadingMessage = loadingQueue.currentMessage
+const loadingItems = loadingQueue.items
+const loadingMenuOpen = ref(false)
 const logListRef = ref<{ scrollToEnd: () => void } | null>(null)
 const workerClient = createLogWorkerClient({
   onError: (cause) => {
@@ -290,6 +297,13 @@ function handleLogListScroll(state: { atBottom: boolean, user: boolean }): void 
 
 function selectLog(item: LogListItem, event: MouseEvent): void {
   logSelection.handleClick(item.id, event)
+}
+
+function handleLogClick(item: LogListItem, event: MouseEvent): void {
+  selectLog(item, event)
+  if (window.matchMedia('(max-width: 620px)').matches) {
+    void openRecord(item)
+  }
 }
 
 function handleLogMiddleClick(item: LogListItem, event: MouseEvent): void {
@@ -556,27 +570,58 @@ onBeforeUnmount(() => {
   <main class="app-shell">
     <header class="topbar glass">
       <nav class="tool-nav" aria-label="Inspector navigation">
-        <button class="tool-nav-button" type="button" aria-label="Help" title="Help and shortcuts" @click="helpDialogOpen = true"><IconGlyph name="help" :size="15" /></button>
-        <button class="tool-nav-button" type="button" aria-label="Show QR code" title="Open Inspector on another device" @click="openQrDialog"><IconGlyph name="qr" :size="15" /></button>
-        <span class="tool-nav-item active"><IconGlyph name="layers" :size="15" />Logs</span>
-        <button class="tool-nav-item disabled" type="button" disabled title="Filters are shown in the sidebar"><IconGlyph name="filter" :size="15" />Filters</button>
+        <BaseDropdown :open="mobileMenuOpen" @close="mobileMenuOpen = false">
+          <template #trigger>
+            <button class="tool-nav-button mobile-menu-trigger" type="button" aria-label="Open menu" title="Open menu" @click="mobileMenuOpen = !mobileMenuOpen"><IconGlyph name="menu" :size="15" /></button>
+          </template>
+          <div class="mobile-menu-list">
+            <button class="mobile-menu-item active" type="button" @click="mobileMenuOpen = false"><IconGlyph name="layers" :size="15" /><span>Logs</span></button>
+            <button class="mobile-menu-item" type="button" @click="mobileMenuOpen = false; helpDialogOpen = true"><IconGlyph name="help" :size="15" /><span>Help</span></button>
+            <button class="mobile-menu-item" type="button" @click="mobileMenuOpen = false; openQrDialog()"><IconGlyph name="qr" :size="15" /><span>QR code</span></button>
+          </div>
+        </BaseDropdown>
+        <div class="tool-nav-desktop">
+          <button class="tool-nav-button" type="button" aria-label="Help" title="Help and shortcuts" @click="helpDialogOpen = true"><IconGlyph name="help" :size="15" /></button>
+          <button class="tool-nav-button" type="button" aria-label="Show QR code" title="Open Inspector on another device" @click="openQrDialog"><IconGlyph name="qr" :size="15" /></button>
+          <span class="tool-nav-item active"><IconGlyph name="layers" :size="15" />Logs</span>
+          <button class="tool-nav-item disabled" type="button" disabled title="Filters are shown in the sidebar"><IconGlyph name="filter" :size="15" />Filters</button>
+        </div>
       </nav>
       <label class="search">
         <IconGlyph name="search" :size="15" />
         <input ref="searchInputRef" v-model="query" type="search" placeholder="Search logs" />
         <kbd>/</kbd>
       </label>
-      <div class="header-actions">
-        <span
-          class="stats"
-          :class="{ 'stats-clearable': logSnapshot.total > 0 }"
-          :role="logSnapshot.total > 0 ? 'button' : undefined"
-          :tabindex="logSnapshot.total > 0 ? 0 : undefined"
-          @click="openClearLogsDialog"
-          @keydown.enter.space.prevent="openClearLogsDialog"
-        >{{ logSnapshot.total }} logs</span>
-        <IconGlyph name="activity" :size="14" class="status-signal" :class="{ online: connected }" />
-        <span class="stats">{{ connected ? 'Live' : 'Offline' }}</span>
+      <div class="topbar-right">
+        <BaseDropdown v-if="loadingMessage" :open="loadingMenuOpen" align="right" @close="loadingMenuOpen = false">
+          <template #trigger>
+            <button class="loading-pill" type="button" aria-label="Show loading tasks" :aria-expanded="loadingMenuOpen" @click="loadingMenuOpen = !loadingMenuOpen">
+              <span class="loading-spinner loading-pill-spinner" aria-hidden="true" />
+              <span class="loading-mobile-label">Loading</span>
+              <Transition name="loading-message" mode="out-in">
+                <span :key="loadingMessage" class="loading-message">{{ loadingMessage }}</span>
+              </Transition>
+            </button>
+          </template>
+          <div class="loading-menu-list">
+            <div v-for="item in loadingItems" :key="item.id" class="loading-menu-item">
+              <span class="loading-menu-dot" aria-hidden="true" />
+              <span>{{ item.message }}</span>
+            </div>
+          </div>
+        </BaseDropdown>
+        <div class="header-actions">
+          <span
+            class="stats"
+            :class="{ 'stats-clearable': logSnapshot.total > 0 }"
+            :role="logSnapshot.total > 0 ? 'button' : undefined"
+            :tabindex="logSnapshot.total > 0 ? 0 : undefined"
+            @click="openClearLogsDialog"
+            @keydown.enter.space.prevent="openClearLogsDialog"
+          >{{ logSnapshot.total }} logs</span>
+          <IconGlyph name="activity" :size="14" class="status-signal" :class="{ online: connected }" />
+          <span class="stats connection-status" :class="{ online: connected }">{{ connected ? 'Live' : 'Offline' }}</span>
+        </div>
       </div>
     </header>
 
@@ -744,7 +789,7 @@ onBeforeUnmount(() => {
               class="log-row"
               :class="{ selected: selectedLogIds.includes(record.id) }"
               type="button"
-              @click="selectLog(record, $event)"
+              @click="handleLogClick(record, $event)"
               @dblclick="void openRecord(record)"
               @mousedown="handleLogMiddleClick(record, $event)"
             >
@@ -759,7 +804,7 @@ onBeforeUnmount(() => {
       </section>
     </section>
 
-    <LogDetailModal :record="selected" @close="closeRecord" />
+    <LogDetailModal :record="selected" @close="closeRecord" @loading="loadingQueue.setLoading('monaco', 'Loading Monaco…', $event)" />
     <HelpDialog :open="helpDialogOpen" @close="helpDialogOpen = false" />
     <QrDialog :open="qrDialogOpen" :value="currentOrigin" @close="qrDialogOpen = false" />
     <ConfirmDialog

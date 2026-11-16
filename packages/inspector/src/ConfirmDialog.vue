@@ -26,12 +26,15 @@ useEscapeClose(() => props.open, () => emit('cancel'))
   <BaseDialog :open="open" :ariaLabel="title" panel-class="confirm-modal" @close="emit('cancel')">
     <div class="confirm-icon" aria-hidden="true">!</div>
     <div class="confirm-content">
-      <h2>{{ title }}</h2>
+      <header class="confirm-header">
+        <h2>{{ title }}</h2>
+        <button class="icon-button" type="button" aria-label="Close confirmation" @click="emit('cancel')">×</button>
+      </header>
       <p>{{ message }}</p>
     </div>
     <footer class="confirm-actions">
-      <button class="confirm-button confirm-button-secondary" type="button" @click="emit('cancel')">{{ cancelLabel }}</button>
       <button class="confirm-button confirm-button-primary" type="button" @click="emit('confirm')">{{ confirmLabel }}</button>
+      <button class="confirm-button confirm-button-secondary" type="button" @click="emit('cancel')">{{ cancelLabel }}</button>
     </footer>
   </BaseDialog>
 </template>

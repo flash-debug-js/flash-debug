@@ -1,5 +1,5 @@
 <script setup lang="ts">
-export type IconName = 'activity' | 'arrow-down' | 'close' | 'database' | 'error' | 'filter' | 'help' | 'info' | 'layers' | 'qr' | 'rows' | 'search' | 'spark' | 'switch' | 'warning'
+export type IconName = 'activity' | 'arrow-down' | 'close' | 'database' | 'error' | 'filter' | 'help' | 'info' | 'layers' | 'menu' | 'qr' | 'rows' | 'search' | 'spark' | 'switch' | 'warning'
 
 withDefaults(defineProps<{
   name: IconName
@@ -74,6 +74,9 @@ withDefaults(defineProps<{
     <template v-else-if="name === 'qr'">
       <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" />
       <path d="M14 14h3v3h-3zM18 18h2v2h-2zM17 14h3" />
+    </template>
+    <template v-else-if="name === 'menu'">
+      <path d="M4 6h16M4 12h16M4 18h16" />
     </template>
     <template v-else-if="name === 'warning'">
       <path d="m12 3 9 16H3L12 3Z" />

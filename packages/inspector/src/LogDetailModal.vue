@@ -6,12 +6,13 @@ import BaseDialog from './components/BaseDialog.vue'
 import { useEscapeClose } from './utils/use-escape-close'
 
 const props = defineProps<{ record: DebugLogRecord | null }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [], loading: [active: boolean] }>()
 const editorFrame = ref<HTMLIFrameElement>()
 const editorError = ref('')
 const editorReady = ref(false)
 const editorLoading = ref(false)
 const hasOpened = ref(false)
+let preloadTimer: ReturnType<typeof setTimeout> | undefined
 
 useEscapeClose(() => props.record !== null, () => emit('close'))
 
@@ -40,21 +41,24 @@ function handleFrameMessage(event: MessageEvent): void {
     editorReady.value = true
     editorLoading.value = false
     editorError.value = ''
+    emit('loading', false)
     sendContent()
   }
   else if (event.data.type === 'error') {
     editorLoading.value = false
+    emit('loading', false)
     editorError.value = typeof event.data.message === 'string' ? event.data.message : 'Monaco failed to load'
   }
 }
 
-async function loadEditor(): Promise<void> {
-  if (!props.record || editorLoading.value || editorReady.value) {
+async function startEditorLoading(): Promise<void> {
+  if (editorLoading.value || editorReady.value) {
     return
   }
 
   hasOpened.value = true
   editorLoading.value = true
+  emit('loading', true)
   await nextTick()
   sendContent()
 }
@@ -69,13 +73,23 @@ watch(() => props.record, (record) => {
     sendContent()
   }
   else {
-    void loadEditor()
+    void startEditorLoading()
   }
 }, { immediate: true, flush: 'post' })
 
-onMounted(() => window.addEventListener('message', handleFrameMessage))
+onMounted(() => {
+  window.addEventListener('message', handleFrameMessage)
+  preloadTimer = setTimeout(() => {
+    void startEditorLoading()
+  }, 800)
+})
 
-onBeforeUnmount(() => window.removeEventListener('message', handleFrameMessage))
+onBeforeUnmount(() => {
+  window.removeEventListener('message', handleFrameMessage)
+  if (preloadTimer) {
+    clearTimeout(preloadTimer)
+  }
+})
 
 function copyContent(): void {
   if (props.record) {
@@ -85,7 +99,7 @@ function copyContent(): void {
 </script>
 
 <template>
-  <BaseDialog :open="!!record" ariaLabel="Log details" panel-class="detail-modal" @close="emit('close')">
+  <BaseDialog :open="!!record" :persistent="true" ariaLabel="Log details" panel-class="detail-modal" @close="emit('close')">
     <template v-if="record">
       <header class="detail-header">
         <div class="detail-title">
@@ -106,10 +120,7 @@ function copyContent(): void {
     </template>
 
       <div class="detail-editor">
-        <div v-if="editorLoading && !editorError" class="editor-loading" role="status" aria-live="polite">
-          <span class="loading-spinner" aria-hidden="true" />
-          <span>Loading Monaco…</span>
-        </div>
+        <pre v-if="record" class="detail-fallback" :class="{ 'is-hidden': editorReady }">{{ formattedContent(record) }}</pre>
         <div v-if="editorError" class="editor-error">Unable to load Monaco: {{ editorError }}</div>
         <iframe v-if="hasOpened" ref="editorFrame" class="detail-editor-frame" :class="{ 'is-hidden': !editorReady || !!editorError }" src="/monaco.html" title="Read only log editor" @load="sendContent" />
       </div>
