@@ -1,8 +1,13 @@
 export type DebugLogLevel = 'debug' | 'info' | 'warning' | 'error'
 
-export type DebugLogSource = 'flutter' | 'adb' | 'harmony' | 'server' | 'unknown'
+/**
+ * Protocol values are intentionally open strings. Inspector knows a few core
+ * values, but producers may add sources without requiring a new protocol
+ * version.
+ */
+export type DebugLogSource = string
 
-export type DebugLogType = 'log' | 'network' | 'exception' | 'performance' | 'event'
+export type DebugLogType = string
 
 export type DebugContentFormat = 'json' | 'jsonc' | 'jsonl' | 'yaml' | 'ansi' | 'text'
 
@@ -56,11 +61,18 @@ export interface DebugLogRecord {
   content?: string
   contentFormat?: DebugContentFormat
   source: DebugLogSource
+  clientId?: string
   tag?: string
   deviceId?: string
   sessionId?: string
   error?: string
   stackTrace?: string
+  errorInfo?: {
+    name?: string
+    code?: string
+    message?: string
+    stack?: string
+  }
   attributes?: Record<string, unknown>
   metadata?: Record<string, unknown>
 }

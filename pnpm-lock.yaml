@@ -287,6 +287,12 @@ importers:
         specifier: ^3.3.14
         version: 3.3.14(typescript@6.0.3)
 
+  packages/logger:
+    dependencies:
+      '@flash-debug/types':
+        specifier: workspace:*
+        version: link:../types
+
   packages/logger-adb:
     dependencies:
       '@flash-debug/types':
