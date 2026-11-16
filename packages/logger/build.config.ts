@@ -1,6 +1,11 @@
-import { defineBuildConfig } from 'unbuild'
-import { mergeDefaultBuildConfig } from '../../scripts/build.common'
+import { defineBuildConfig } from 'obuild/config'
 
-export default defineBuildConfig(mergeDefaultBuildConfig({
-  entries: ['src/index'],
-}))
+export default defineBuildConfig({
+  entries: [
+    {
+      type: 'bundle',
+      input: './src/index.ts',
+      outDir: './dist',
+    },
+  ],
+})
