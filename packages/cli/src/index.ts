@@ -5,6 +5,7 @@ import { startDebugRuntime } from '@flash-debug/core'
 import { createAdbAdapter } from '@flash-debug/logger-adb'
 import { createHdcAdapter } from '@flash-debug/logger-hdc'
 import { cac } from 'cac'
+import { createRuntimeConsole } from './runtime-console'
 
 export async function runCli(argv: string[] = process.argv): Promise<void> {
   const cli = cac('flash-debug')
@@ -51,6 +52,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
     hdcPath?: string
   }): Promise<void> {
     const client = await resolveClient(options)
+    const runtimeConsole = createRuntimeConsole()
     const runtime = await startDebugRuntime({
       host: options.host,
       port: Number(options.port ?? DEFAULT_DEBUG_PORT),
@@ -59,9 +61,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
       subdomain: options.subdomain,
       zone: options.zone,
       client,
-      onLog: (line, stream) => {
-        process.stderr.write(`[${stream}] ${line}\n`)
-      },
+      onLog: runtimeConsole.writeLog,
     })
 
     process.stdout.write(`Inspector  ${runtime.localUrl}\n`)
@@ -72,17 +72,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
       process.stdout.write(`Public     ${runtime.publicUrl}\n`)
     }
 
-    const stop = async () => {
-      await runtime.stop()
-      process.exitCode = 0
-    }
-    process.once('SIGINT', () => {
-      void stop()
-    })
-    process.once('SIGTERM', () => {
-      void stop()
-    })
-    await new Promise<void>(() => {})
+    await runtimeConsole.run(runtime)
   }
 
   cli.help()
