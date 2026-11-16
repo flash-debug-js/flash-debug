@@ -42,6 +42,7 @@ const helpDialogOpen = ref(false)
 const qrDialogOpen = ref(false)
 const mobileMenuOpen = ref(false)
 const currentOrigin = ref('')
+const topMessage = ref('')
 const searchInputRef = ref<HTMLInputElement>()
 const loadingQueue = useLoadingQueue()
 const loadingMessage = loadingQueue.currentMessage
@@ -58,6 +59,7 @@ const unsubscribeWorker = workerClient.subscribe((snapshot) => {
 })
 let eventSource: EventSource | undefined
 let copyNoticeTimer: ReturnType<typeof setTimeout> | undefined
+let topMessageTimer: ReturnType<typeof setTimeout> | undefined
 
 const filteredLogs = computed(() => logSnapshot.value.items)
 const visiblePastedLogs = computed(() => pastedLogs.value.filter(matchesViewFilter))
@@ -434,6 +436,27 @@ async function copySelectedLogs(): Promise<void> {
   }
 }
 
+async function copyQrUrl(): Promise<void> {
+  if (!currentOrigin.value) {
+    return
+  }
+
+  try {
+    await writeClipboard(currentOrigin.value)
+    topMessage.value = 'URL copied'
+    if (topMessageTimer) {
+      clearTimeout(topMessageTimer)
+    }
+    topMessageTimer = setTimeout(() => {
+      topMessage.value = ''
+      topMessageTimer = undefined
+    }, 1800)
+  }
+  catch (cause) {
+    error.value = cause instanceof Error ? cause.message : String(cause)
+  }
+}
+
 function handlePaste(event: ClipboardEvent): void {
   if (isEditableTarget(event.target)) {
     return
@@ -487,6 +510,12 @@ function handleKeydown(event: KeyboardEvent): void {
   }
 
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
+    if (qrDialogOpen.value) {
+      event.preventDefault()
+      void copyQrUrl()
+      return
+    }
+
     if (selectedLogIds.value.length && !isEditableTarget(event.target) && !hasNativeTextSelection()) {
       event.preventDefault()
       void copySelectedLogs()
@@ -559,6 +588,9 @@ onBeforeUnmount(() => {
   if (copyNoticeTimer) {
     clearTimeout(copyNoticeTimer)
   }
+  if (topMessageTimer) {
+    clearTimeout(topMessageTimer)
+  }
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('paste', handlePaste)
   unsubscribeWorker()
@@ -568,6 +600,12 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
+    <Transition name="top-message">
+      <div v-if="topMessage" class="top-message" role="status" aria-live="polite">
+        <IconGlyph name="info" :size="14" />
+        <span>{{ topMessage }}</span>
+      </div>
+    </Transition>
     <header class="topbar glass">
       <nav class="tool-nav" aria-label="Inspector navigation">
         <BaseDropdown :open="mobileMenuOpen" @close="mobileMenuOpen = false">
