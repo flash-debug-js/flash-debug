@@ -42,13 +42,18 @@ export function useRangeSelection<T>(items: () => readonly T[], selection: Ref<T
     }
 
     const additive = event.ctrlKey || event.metaKey
-    const anchorIndex = anchor.value === null ? -1 : currentItems.indexOf(anchor.value)
+    const anchorIndex = anchor.value === null
+      ? -1
+      : currentItems.indexOf(anchor.value)
     if (event.shiftKey && anchorIndex >= 0) {
       const start = Math.min(anchorIndex, index)
       const end = Math.max(anchorIndex, index)
       const range = currentItems.slice(start, end + 1)
       selection.value = additive
-        ? orderedUnique(currentItems, [...selection.value, ...range])
+        ? orderedUnique(currentItems, [
+            ...selection.value,
+            ...range,
+          ])
         : [...range]
     }
     else if (additive) {
@@ -59,7 +64,9 @@ export function useRangeSelection<T>(items: () => readonly T[], selection: Ref<T
       const repeated = options.toggleOnRepeatedClick
         && selection.value.length === 1
         && selection.value[0] === value
-      selection.value = repeated ? [] : [value]
+      selection.value = repeated
+        ? []
+        : [value]
     }
 
     anchor.value = value

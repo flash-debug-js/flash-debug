@@ -1,8 +1,20 @@
 import type { DebugLogLevel, DebugLogRecord, DebugLogSource, DebugLogType } from '@flash-debug/types'
 
 const LEVELS: readonly DebugLogLevel[] = ['debug', 'info', 'warning', 'error']
-const TYPES: readonly DebugLogType[] = ['log', 'network', 'exception', 'performance', 'event']
-const SOURCES: readonly DebugLogSource[] = ['flutter', 'adb', 'harmony', 'server', 'unknown']
+const TYPES: readonly DebugLogType[] = [
+  'log',
+  'network',
+  'exception',
+  'performance',
+  'event',
+]
+const SOURCES: readonly DebugLogSource[] = [
+  'flutter',
+  'adb',
+  'harmony',
+  'server',
+  'unknown',
+]
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -28,12 +40,22 @@ function normalizeRecord(value: unknown, index: number, fallbackTimestamp: strin
 
   return {
     ...value,
-    id: typeof value.id === 'string' && value.id.length > 0 ? value.id : `pasted-${Date.now()}-${index}`,
-    timestamp: typeof value.timestamp === 'string' && value.timestamp.length > 0 ? value.timestamp : fallbackTimestamp,
-    level: isOneOf(value.level, LEVELS) ? value.level : 'info',
-    type: isOneOf(value.type, TYPES) ? value.type : 'log',
+    id: typeof value.id === 'string' && value.id.length > 0
+      ? value.id
+      : `pasted-${Date.now()}-${index}`,
+    timestamp: typeof value.timestamp === 'string' && value.timestamp.length > 0
+      ? value.timestamp
+      : fallbackTimestamp,
+    level: isOneOf(value.level, LEVELS)
+      ? value.level
+      : 'info',
+    type: isOneOf(value.type, TYPES)
+      ? value.type
+      : 'log',
     message,
-    source: isOneOf(value.source, SOURCES) ? value.source : 'unknown',
+    source: isOneOf(value.source, SOURCES)
+      ? value.source
+      : 'unknown',
   }
 }
 
@@ -59,7 +81,9 @@ export function parsePastedLogs(text: string, now = new Date()): DebugLogRecord[
 
 function timestampValue(record: DebugLogRecord): number {
   const value = Date.parse(record.timestamp)
-  return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER
+  return Number.isFinite(value)
+    ? value
+    : Number.MAX_SAFE_INTEGER
 }
 
 /** Merge by id and keep pasted logs in chronological order from old to new. */
@@ -68,7 +92,9 @@ export function mergePastedLogs(existing: readonly DebugLogRecord[], incoming: r
   existing.forEach(record => records.set(record.id, record))
   incoming.forEach(record => records.set(record.id, record))
 
-  const merged = [...records.values()]
+  const merged = [
+    ...records.values(),
+  ]
   const order = new Map(merged.map((record, index) => [record.id, index]))
   return merged.sort((left, right) => timestampValue(left) - timestampValue(right) || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0))
 }

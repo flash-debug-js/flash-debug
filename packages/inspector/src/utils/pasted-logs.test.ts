@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { mergePastedLogs, parsePastedLogs } from './pasted-logs'
 
-const record = (id: string, timestamp: string, message: string) => ({
-  id,
-  timestamp,
-  level: 'info' as const,
-  type: 'log' as const,
-  source: 'flutter' as const,
-  message,
-})
+function record(id: string, timestamp: string, message: string) {
+  return {
+    id,
+    timestamp,
+    level: 'info' as const,
+    type: 'log' as const,
+    source: 'flutter' as const,
+    message,
+  }
+}
 
 describe('pasted logs', () => {
   it('parses a single record and an array', () => {
