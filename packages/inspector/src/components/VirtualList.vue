@@ -45,12 +45,19 @@ function updateViewport(): void {
   scrollTop.value = viewport.value?.scrollTop ?? 0
 }
 
+function maxScrollTop(): number {
+  if (!viewport.value) {
+    return 0
+  }
+  return Math.max(0, viewport.value.scrollHeight - viewport.value.clientHeight)
+}
+
 function handleScroll(event: Event): void {
   const element = event.currentTarget as HTMLElement
   scrollTop.value = element.scrollTop
-  const maxScrollTop = Math.max(0, contentHeight.value - viewportHeight.value)
+  const end = Math.max(0, element.scrollHeight - element.clientHeight)
   emit('scroll-state', {
-    atBottom: element.scrollTop >= maxScrollTop - 2,
+    atBottom: element.scrollTop >= end - 2,
     user: !programmaticScroll,
   })
 }
@@ -60,9 +67,13 @@ function scrollToEnd(): void {
     return
   }
   programmaticScroll = true
-  viewport.value.scrollTop = Math.max(0, contentHeight.value - viewportHeight.value)
+  viewport.value.scrollTop = maxScrollTop()
   updateViewport()
   requestAnimationFrame(() => {
+    if (viewport.value) {
+      viewport.value.scrollTop = maxScrollTop()
+      updateViewport()
+    }
     programmaticScroll = false
   })
 }
