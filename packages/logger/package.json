@@ -33,8 +33,5 @@
     "build": "unbuild",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
-  },
-  "dependencies": {
-    "@flash-debug/types": "workspace:*"
   }
 }

@@ -1,5 +1,5 @@
-import type { DebugLogRecord } from '@flash-debug/types'
 import { describe, expect, it } from 'vitest'
+import type { FlashDebugLogRecord } from '../src'
 import { createLogger } from '../src'
 
 function response(status: number, body = ''): Response {
@@ -11,9 +11,9 @@ function response(status: number, body = ''): Response {
   } as Response
 }
 
-function payload(request: RequestInit): { items: DebugLogRecord[], sdk: { name: string, version: string } } {
+function payload(request: RequestInit): { items: FlashDebugLogRecord[], sdk: { name: string, version: string } } {
   return JSON.parse(String(request.body)) as {
-    items: DebugLogRecord[]
+    items: FlashDebugLogRecord[]
     sdk: { name: string, version: string }
   }
 }
@@ -82,7 +82,7 @@ describe('Flash Debug logger', () => {
   })
 
   it('redacts secrets before enqueueing and drops the oldest record at the queue limit', async () => {
-    const dropped: DebugLogRecord[] = []
+    const dropped: FlashDebugLogRecord[] = []
     const requests: RequestInit[] = []
     const logger = createLogger({
       baseUrl: 'http://127.0.0.1:4517',

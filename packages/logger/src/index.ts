@@ -1,22 +1,43 @@
-import type {
-  DebugContentFormat,
-  DebugLogLevel,
-  DebugLogRecord,
-  DebugLogType,
-} from '@flash-debug/types'
-
 export const FLASH_DEBUG_PROTOCOL_VERSION = 1 as const
 export const FLASH_DEBUG_SDK_NAME = '@flash-debug/logger'
 export const FLASH_DEBUG_SDK_VERSION = '0.1.0'
 
 type FetchFunction = typeof globalThis.fetch
 
-export interface FlashDebugLogInput {
-  level: DebugLogLevel
+export type FlashDebugLogLevel = 'debug' | 'info' | 'warning' | 'error'
+export type FlashDebugLogType = string
+export type FlashDebugContentFormat = 'json' | 'jsonc' | 'jsonl' | 'yaml' | 'ansi' | 'text'
+
+export interface FlashDebugLogRecord {
+  id: string
+  timestamp: string
+  level: FlashDebugLogLevel
+  type: FlashDebugLogType
   message: string
-  type?: DebugLogType
   content?: string
-  contentFormat?: DebugContentFormat
+  contentFormat?: FlashDebugContentFormat
+  source: string
+  clientId?: string
+  tag?: string
+  deviceId?: string
+  sessionId?: string
+  error?: string
+  stackTrace?: string
+  errorInfo?: {
+    name?: string
+    code?: string
+    message?: string
+    stack?: string
+  }
+  attributes?: Record<string, unknown>
+}
+
+export interface FlashDebugLogInput {
+  level: FlashDebugLogLevel
+  message: string
+  type?: FlashDebugLogType
+  content?: string
+  contentFormat?: FlashDebugContentFormat
   tag?: string
   attributes?: Record<string, unknown>
   error?: unknown
@@ -46,16 +67,16 @@ export interface FlashDebugLoggerOptions {
   retryMaxMs?: number
   fetch?: FetchFunction
   onError?: (error: unknown) => void
-  onDrop?: (records: readonly DebugLogRecord[], error: unknown) => void
-  redact?: (record: DebugLogRecord) => DebugLogRecord
+  onDrop?: (records: readonly FlashDebugLogRecord[], error: unknown) => void
+  redact?: (record: FlashDebugLogRecord) => FlashDebugLogRecord
 }
 
 export interface FlashDebugLogger {
-  log(input: FlashDebugLogInput): DebugLogRecord
-  debug(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): DebugLogRecord
-  info(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): DebugLogRecord
-  warning(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): DebugLogRecord
-  error(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): DebugLogRecord
+  log(input: FlashDebugLogInput): FlashDebugLogRecord
+  debug(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord
+  info(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord
+  warning(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord
+  error(message: string, options?: Omit<FlashDebugLogInput, 'level' | 'message'>): FlashDebugLogRecord
   flush(): Promise<void>
   close(): Promise<void>
   readonly queueLength: number
@@ -86,7 +107,7 @@ interface FlashDebugBatchBody {
   protocolVersion: typeof FLASH_DEBUG_PROTOCOL_VERSION
   clientId: string
   sdk: FlashDebugSdkInfo
-  items: readonly DebugLogRecord[]
+  items: readonly FlashDebugLogRecord[]
 }
 
 interface RetryAfterResponse extends Response {
@@ -128,9 +149,9 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
   private readonly retryMaxMs: number
   private readonly request: FetchFunction
   private readonly onError?: (error: unknown) => void
-  private readonly onDrop?: (records: readonly DebugLogRecord[], error: unknown) => void
-  private readonly customRedact?: (record: DebugLogRecord) => DebugLogRecord
-  private readonly queue: DebugLogRecord[] = []
+  private readonly onDrop?: (records: readonly FlashDebugLogRecord[], error: unknown) => void
+  private readonly customRedact?: (record: FlashDebugLogRecord) => FlashDebugLogRecord
+  private readonly queue: FlashDebugLogRecord[] = []
   private flushTimer: ReturnType<typeof setTimeout> | undefined
   private flushPromise: Promise<void> | undefined
   private closed = false
@@ -178,7 +199,7 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
     return this.queue.length
   }
 
-  log(input: FlashDebugLogInput): DebugLogRecord {
+  log(input: FlashDebugLogInput): FlashDebugLogRecord {
     if (this.closed) {
       throw new Error('Flash Debug logger is closed')
     }
@@ -216,19 +237,19 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
     return record
   }
 
-  debug(message: string, options: Omit<FlashDebugLogInput, 'level' | 'message'> = {}): DebugLogRecord {
+  debug(message: string, options: Omit<FlashDebugLogInput, 'level' | 'message'> = {}): FlashDebugLogRecord {
     return this.log({ ...options, level: 'debug', message })
   }
 
-  info(message: string, options: Omit<FlashDebugLogInput, 'level' | 'message'> = {}): DebugLogRecord {
+  info(message: string, options: Omit<FlashDebugLogInput, 'level' | 'message'> = {}): FlashDebugLogRecord {
     return this.log({ ...options, level: 'info', message })
   }
 
-  warning(message: string, options: Omit<FlashDebugLogInput, 'level' | 'message'> = {}): DebugLogRecord {
+  warning(message: string, options: Omit<FlashDebugLogInput, 'level' | 'message'> = {}): FlashDebugLogRecord {
     return this.log({ ...options, level: 'warning', message })
   }
 
-  error(message: string, options: Omit<FlashDebugLogInput, 'level' | 'message'> = {}): DebugLogRecord {
+  error(message: string, options: Omit<FlashDebugLogInput, 'level' | 'message'> = {}): FlashDebugLogRecord {
     return this.log({ ...options, level: 'error', message })
   }
 
@@ -262,7 +283,7 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
     }
   }
 
-  private enqueue(record: DebugLogRecord): void {
+  private enqueue(record: FlashDebugLogRecord): void {
     this.queue.push(record)
     while (this.queue.length > this.queueLimit) {
       const dropped = this.queue.shift()
@@ -292,7 +313,7 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
     }
   }
 
-  private async sendBatch(batch: readonly DebugLogRecord[]): Promise<void> {
+  private async sendBatch(batch: readonly FlashDebugLogRecord[]): Promise<void> {
     for (let attempt = 0; ; attempt += 1) {
       try {
         const response = await this.sendRequest(batch)
@@ -318,7 +339,7 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
     }
   }
 
-  private async sendRequest(batch: readonly DebugLogRecord[]): Promise<Response> {
+  private async sendRequest(batch: readonly FlashDebugLogRecord[]): Promise<Response> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
 
@@ -349,8 +370,8 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
     }
   }
 
-  private redact(record: DebugLogRecord): DebugLogRecord {
-    const redacted = redactValue(record) as DebugLogRecord
+  private redact(record: FlashDebugLogRecord): FlashDebugLogRecord {
+    const redacted = redactValue(record) as FlashDebugLogRecord
     if (!this.customRedact) {
       return redacted
     }
@@ -403,7 +424,7 @@ async function createUploadError(response: RetryAfterResponse): Promise<FlashDeb
   )
 }
 
-function normalizeError(error: unknown, stackTrace?: string): Pick<DebugLogRecord, 'error' | 'stackTrace' | 'errorInfo'> {
+function normalizeError(error: unknown, stackTrace?: string): Pick<FlashDebugLogRecord, 'error' | 'stackTrace' | 'errorInfo'> {
   if (error === undefined && stackTrace === undefined) {
     return {}
   }
