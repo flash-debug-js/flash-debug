@@ -1,5 +1,7 @@
 import type { DebugClientAdapter } from '@flash-debug/client'
-import process from 'node:process'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import process, { loadEnvFile } from 'node:process'
 import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
 import { startDebugRuntime } from '@flash-debug/core'
 import { createAdbAdapter } from '@flash-debug/logger-adb'
@@ -13,6 +15,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
 
   cli
     .command('[root]', 'Start the Flash Debug Inspector')
+    .option('--env-file <path>', 'Load environment variables from a file, defaults to cwd/.env')
     .option('--port <port>', 'Nitro port', { default: DEFAULT_DEBUG_PORT })
     .option('--host <host>', 'Nitro host', { default: '127.0.0.1' })
     .option('--no-tunnel', 'Start only the local Inspector')
@@ -24,6 +27,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
     .option('--adb-path <path>', 'Path to adb executable')
     .option('--hdc-path <path>', 'Path to hdc executable')
     .action((_root: unknown, options: {
+      envFile?: string
       port?: number | string
       host?: string
       tunnel?: boolean
@@ -40,6 +44,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
     })
 
   async function start(options: {
+    envFile?: string
     port?: number | string
     host?: string
     tunnel?: boolean
@@ -51,6 +56,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
     adbPath?: string
     hdcPath?: string
   }): Promise<void> {
+    loadEnvironment(options.envFile)
     const client = await resolveClient(options)
     const runtimeConsole = createRuntimeConsole()
     const runtime = await startDebugRuntime({
@@ -58,6 +64,9 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
       port: Number(options.port ?? DEFAULT_DEBUG_PORT),
       tunnel: options.tunnel,
       mode: options.mode,
+      apiToken: process.env.CLOUDFLARE_API_TOKEN,
+      accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+      zoneId: process.env.CLOUDFLARE_ZONE_ID,
       subdomain: options.subdomain,
       zone: options.zone,
       client,
@@ -79,6 +88,18 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
   cli.version('0.1.0')
   cli.parse(argv)
   await actionPromise
+}
+
+function loadEnvironment(envFile?: string): void {
+  if (envFile) {
+    loadEnvFile(envFile)
+    return
+  }
+
+  const defaultEnvFile = join(process.cwd(), '.env')
+  if (existsSync(defaultEnvFile)) {
+    loadEnvFile(defaultEnvFile)
+  }
 }
 
 async function resolveClient(options: {
