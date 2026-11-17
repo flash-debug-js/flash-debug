@@ -16,6 +16,7 @@ export interface DebugRuntimeOptions {
   host?: string
   port?: number
   serverRoot?: string
+  envFile?: string
   tunnel?: boolean
   mode?: 'quick' | 'named'
   subdomain?: string
@@ -153,6 +154,7 @@ export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Prom
       tunnel = await startTunnel({
         localUrl: server.localUrl,
         cwd: options.cwd ?? process.cwd(),
+        envFile: options.envFile,
         mode,
         hostname,
         zone: options.zone,
