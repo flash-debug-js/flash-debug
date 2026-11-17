@@ -21,7 +21,7 @@ types ◄── config
   │       └── flash-debug
   ├── client ◄── logger-adb
   ├── server
-  └── core ──> @flash-tunnel/sdk
+  └── core ──> @flash-nexus/sdk
                   ▲
 cli ───────────────┘
 ```
@@ -34,7 +34,7 @@ flash-debug
         └── @flash-debug/core
               ├── @flash-debug/server
               ├── @flash-debug/client
-              └── @flash-tunnel/sdk
+              └── @flash-nexus/sdk
 ```
 
 约束：

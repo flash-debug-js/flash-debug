@@ -1,13 +1,12 @@
 import type { DebugClientAdapter, DebugClientSession } from '@flash-debug/client'
 import type { DebugFilterValues, DebugSessionSnapshot, DebugSourceDescriptor } from '@flash-debug/types'
-import type { EmbeddedTunnelSession } from '@flash-tunnel/sdk'
 import { randomInt } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { HttpLogSink } from '@flash-debug/client'
 import { startDebugServer } from '@flash-debug/server'
-import { startTunnel } from '@flash-tunnel/sdk'
+import { startFlashNexus } from '@flash-nexus/sdk'
 
 const require = createRequire(import.meta.url)
 
@@ -22,9 +21,6 @@ export interface DebugRuntimeOptions {
   subdomain?: string
   zone?: string
   cloudflaredPath?: string
-  apiToken?: string
-  accountId?: string
-  zoneId?: string
   client?: {
     adapter: DebugClientAdapter
     deviceId: string
@@ -34,10 +30,12 @@ export interface DebugRuntimeOptions {
   onLog?: (line: string, stream: 'stdout' | 'stderr') => void
 }
 
+type DebugTunnelSession = Pick<Awaited<ReturnType<typeof startFlashNexus>>, 'localUrl' | 'publicUrl' | 'stop'>
+
 export interface DebugRuntime {
   localUrl: string
   publicUrl?: string
-  tunnel?: EmbeddedTunnelSession
+  tunnel?: DebugTunnelSession
   clientSession?: DebugClientSession
   stop: () => Promise<void>
 }
@@ -74,7 +72,7 @@ export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Prom
   const hostname = mode === 'named' && options.zone
     ? createHostname(options.zone, options.subdomain)
     : undefined
-  let tunnel: EmbeddedTunnelSession | undefined
+  let tunnel: DebugTunnelSession | undefined
   let clientSession: DebugClientSession | undefined
   let logSink: HttpLogSink | undefined
   const sourceDescriptor = options.client?.adapter.getSourceDescriptor?.()
@@ -151,17 +149,29 @@ export async function startDebugRuntime(options: DebugRuntimeOptions = {}): Prom
       await startClient()
     }
     if (options.tunnel !== false) {
-      tunnel = await startTunnel({
+      tunnel = await startFlashNexus({
         localUrl: server.localUrl,
         cwd: options.cwd ?? process.cwd(),
         envFile: options.envFile,
+        config: {
+          server: { url: server.localUrl },
+          tunnel: {
+            mode,
+            hostname,
+            cloudflaredPath: options.cloudflaredPath,
+          },
+          ...(mode === 'named'
+            ? {
+                dns: {
+                  zone: options.zone,
+                  hostname,
+                },
+              }
+            : {}),
+        },
         mode,
         hostname,
         zone: options.zone,
-        cloudflaredPath: options.cloudflaredPath,
-        apiToken: options.apiToken,
-        accountId: options.accountId,
-        zoneId: options.zoneId,
         onLog: options.onLog,
       })
     }

@@ -1,6 +1,6 @@
 # flash-debug 设计文档
 
-`flash-debug` 是一个本地运行的移动端远程调试工具。它启动本地 Nitro 服务，托管 Inspector 页面和调试 API，再通过 `@flash-tunnel/sdk` 将这个单一 origin 暴露到公网。
+`flash-debug` 是一个本地运行的移动端远程调试工具。它启动本地 Nitro 服务，托管 Inspector 页面和调试 API，再通过 `@flash-nexus/sdk` 将这个单一 origin 暴露到公网，并按配置处理 Tunnel 与 DNS。
 
 ## 文档索引
 
@@ -22,5 +22,5 @@
 3. `@flash-debug/server` 使用 Nitro，页面名称为 Inspector。
 4. `@flash-debug/client` 只定义客户端来源的统一生命周期，不知道 ADB 细节。
 5. `@flash-debug/logger-adb` 实现 Android ADB/logcat 日志接入。
-6. `@flash-tunnel/sdk` 只负责本地 origin 到公网 Tunnel，不负责调试业务。
+6. `@flash-nexus/sdk` 负责将本地 origin 暴露到公网，并协调 Tunnel 与 DNS；它不负责调试业务。
 7. Flutter 日志库继续放在 `acewill-flutter-sdk`，通过统一日志协议接入服务。

@@ -3,9 +3,12 @@ minimumReleaseAgeExclude:
   - '@flash-tunnel/adapter-cloudflare'
   - '@flash-tunnel/config'
   - '@flash-tunnel/core'
-  - '@flash-tunnel/sdk'
   - '@flash-tunnel/types'
   - '@flash-tunnel/utils'
+  - '@flash-nexus/config@0.2.0'
+  - '@flash-nexus/core@0.2.0'
+  - '@flash-nexus/sdk@0.2.0'
+  - '@flash-nexus/types@0.2.0'
 
 trustPolicy: no-downgrade
 shellEmulator: true

@@ -38,6 +38,6 @@
     "@flash-debug/config": "workspace:*",
     "@flash-debug/server": "workspace:*",
     "@flash-debug/types": "workspace:*",
-    "@flash-tunnel/sdk": "^0.3.0"
+    "@flash-nexus/sdk": "^0.2.0"
   }
 }

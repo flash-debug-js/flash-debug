@@ -17,7 +17,7 @@ packages/types         # 跨包协议与类型
 packages/config        # flash-debug.ts 配置契约
 ```
 
-`flash-debug` 会启动本地 Nitro 服务，再通过 `@flash-tunnel/sdk` 建立公网 Tunnel。ADB、Flutter 日志和未来的 iOS/模拟器来源都统一转换为 `@flash-debug/types` 中的日志事件。
+`flash-debug` 会启动本地 Nitro 服务，再通过 `@flash-nexus/sdk` 建立公网 Tunnel 并按配置管理 DNS。ADB、Flutter 日志和未来的 iOS/模拟器来源都统一转换为 `@flash-debug/types` 中的日志事件。
 
 ## 设备日志调试
 

@@ -9,7 +9,7 @@ flash-debug CLI
   ├─ @flash-debug/server      Nitro API + Inspector 页面
   ├─ @flash-debug/client      客户端来源编排
   │    └─ @flash-debug/logger-adb
-  └─ @flash-tunnel/sdk        Cloudflare Tunnel 生命周期
+  └─ @flash-nexus/sdk         Cloudflare Tunnel 与 DNS 生命周期
 ```
 
 公网链路只有一个 origin：
@@ -63,12 +63,13 @@ Browser Inspector ──┘                         ├── /
 
 未来的 iOS、Flutter VM、模拟器日志来源都实现同一个 logger contract。
 
-### `@flash-tunnel/sdk`
+### `@flash-nexus/sdk`
 
 负责：
 
 - 接收已启动的本地 origin；
 - 创建 quick/named Tunnel；
+- 按配置创建和清理 named Tunnel 所需的 DNS 记录；
 - 返回公网 URL；
 - 停止 cloudflared；
 - 清理本次会话创建的 Cloudflare 资源。

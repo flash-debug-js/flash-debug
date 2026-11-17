@@ -5,7 +5,7 @@
 - monorepo workspace；
 - `flash-debug` 根入口和 CLI 包；
 - `types`、`config`、`client`、`logger-adb` 包骨架；
-- `@flash-tunnel/sdk` 公共嵌入 API；
+- `@flash-nexus/sdk` 公共嵌入 API；
 - 设计文档和包依赖方向。
 
 ## M1 · Nitro Inspector
