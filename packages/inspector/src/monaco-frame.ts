@@ -1,18 +1,17 @@
-import jsonLang from '@shikijs/langs/json'
-import jsoncLang from '@shikijs/langs/jsonc'
-import jsonlLang from '@shikijs/langs/jsonl'
-import yamlLang from '@shikijs/langs/yaml'
-import vitesseDark from '@shikijs/themes/vitesse-dark'
-import { init } from 'modern-monaco/core'
 import { INSPECTOR_EDITOR_OPTIONS, INSPECTOR_EDITOR_THEME } from './editor-config'
 
-const host = document.querySelector<HTMLElement>('#editor')
-if (!host) {
+const MODERN_MONACO_CORE_URL = 'https://esm.sh/modern-monaco@0.4.2/core'
+
+type ModernMonacoModule = typeof import('modern-monaco/core')
+type Monaco = Awaited<ReturnType<ModernMonacoModule['init']>>
+
+const editorHost = document.querySelector<HTMLElement>('#editor')
+if (!editorHost) {
   throw new Error('Monaco host element is missing')
 }
+const host: HTMLElement = editorHost
 
-let monaco: Awaited<ReturnType<typeof init>> | undefined
-type Monaco = Awaited<ReturnType<typeof init>>
+let monaco: Monaco | undefined
 type MonacoEditor = ReturnType<Monaco['editor']['create']>
 type MonacoModel = ReturnType<Monaco['editor']['createModel']>
 let editor: MonacoEditor | undefined
@@ -48,17 +47,13 @@ window.addEventListener('message', (event) => {
   }
 })
 
-void init({
-  defaultTheme: vitesseDark,
-  themes: [vitesseDark],
-  langs: [
-    ...jsonLang,
-    ...jsoncLang,
-    ...jsonlLang,
-    ...yamlLang,
-  ],
-}).then((instance) => {
-  monaco = instance
+async function startEditor(): Promise<void> {
+  const { init } = await import(/* @vite-ignore */ MODERN_MONACO_CORE_URL) as ModernMonacoModule
+  monaco = await init({
+    defaultTheme: INSPECTOR_EDITOR_THEME,
+    themes: [INSPECTOR_EDITOR_THEME],
+    langs: ['json', 'jsonc', 'jsonl', 'yaml'],
+  })
   editor = monaco.editor.create(host, {
     ...INSPECTOR_EDITOR_OPTIONS,
     theme: INSPECTOR_EDITOR_THEME,
@@ -70,7 +65,9 @@ void init({
     applyContent(pending.content, pending.language)
     pending = undefined
   }
-}).catch((error: unknown) => {
+}
+
+void startEditor().catch((error: unknown) => {
   send({
     type: 'error',
     message: error instanceof Error

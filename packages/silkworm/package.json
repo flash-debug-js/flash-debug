@@ -2,8 +2,30 @@
   "name": "@flash-debug/silkworm",
   "type": "module",
   "version": "0.3.0",
-  "private": true,
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/flash-debug-js/flash-debug#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flash-debug-js/flash-debug.git"
+  },
+  "bugs": {
+    "url": "https://github.com/flash-debug-js/flash-debug/issues"
+  },
+  "files": [
+    "dist",
+    ".output",
+    "index.html",
+    "nitro.config.ts",
+    "public",
+    "scripts",
+    "server",
+    "src",
+    "tsconfig.json",
+    "vite.config.ts"
+  ],
   "scripts": {
     "predev": "pnpm --filter @flash-debug/config build",
     "dev": "esno scripts/dev.ts",

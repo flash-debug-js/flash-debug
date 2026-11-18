@@ -65,6 +65,10 @@ npx flash-debug
 CLI 参数会覆盖配置文件中的同名选项。需要只启动本地 Inspector 时使用
 `flash-debug --no-tunnel`。
 
+Inspector 中的 Monaco 编辑器在首次打开日志详情时按需从固定版本的 CDN
+加载初始化模块、编辑器核心、Worker、语言包和主题。Monaco 的 loading 状态
+仍然由 Inspector 管理；如果 CDN 加载失败，详情弹窗会显示错误信息。
+
 ## 设备日志调试
 
 Android 使用 ADB 适配器：

@@ -265,18 +265,9 @@ importers:
       '@flash-debug/types':
         specifier: workspace:*
         version: link:../types
-      '@shikijs/langs':
-        specifier: ^4.6.0
-        version: 4.6.0
-      '@shikijs/themes':
-        specifier: ^4.6.0
-        version: 4.6.0
       comlink:
         specifier: ^4.4.2
         version: 4.4.2
-      modern-monaco:
-        specifier: ^0.4.2
-        version: 0.4.2(typescript@6.0.3)
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -290,6 +281,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: ^6.0.11
         version: 6.0.11(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(vue@3.5.45(typescript@6.0.3))
+      modern-monaco:
+        specifier: ^0.4.2
+        version: 0.4.2(typescript@6.0.3)
       nitro:
         specifier: 3.0.261103-rc
         version: 3.0.261103-rc
@@ -1422,21 +1416,6 @@ packages:
     resolution: {integrity: sha512-ADb1Uz2MNM0sxVpAlMNdQG16Hw4sgW1aqVL7NeqBMpcZeiHb192d7W6shZdMQs33D+w9ihDYBBPsYqqc4MlD8w==}
     cpu: [x64]
     os: [win32]
-
-  '@shikijs/langs@4.6.0':
-    resolution: {integrity: sha512-1yMEX3oCVV54LUq/ovfpRkDQoYDkcvjSWFFa/YLUDMiSoRzMi2uxLJYbv41ahT8Lu9lFMaa7hecd3Q39trqUyg==}
-    engines: {node: '>=20'}
-
-  '@shikijs/themes@4.6.0':
-    resolution: {integrity: sha512-qHAVAs80RiGD+IRuH9G+JPDOEc9A/kHsng4EzCUCwB9bLzW6Z0y9WETh2YyCcADJBmfrIaJ1Jp7KBNP6FHkgtQ==}
-    engines: {node: '>=20'}
-
-  '@shikijs/types@4.6.0':
-    resolution: {integrity: sha512-+ENG1adsKt/X7cRYw1Nl7BEpBmPOjmQ7bR/eGmHuMlT8gtOFf3KEi5l31DJYyAWhW6Y6bjP1plU7FmaxWGENFw==}
-    engines: {node: '>=20'}
-
-  '@shikijs/vscode-textmate@10.1.0':
-    resolution: {integrity: sha512-cVBuhDQjBZaNMTwBquYfPydrUP+E3hE6oYGasx8h6ZrODIM7/r+gxLDXdd66oszbrggZHEntdE6j+5gYIVyMWQ==}
 
   '@sindresorhus/base62@1.0.0':
     resolution: {integrity: sha512-TeheYy0ILzBEI/CO55CP6zJCSdSWeRtGnHy8U8dWSUH4I68iqTsy7HkMktR4xakThc9jotkPQUXT4ITdbV7cHA==}
@@ -4437,21 +4416,6 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.68.3':
     optional: true
-
-  '@shikijs/langs@4.6.0':
-    dependencies:
-      '@shikijs/types': 4.6.0
-
-  '@shikijs/themes@4.6.0':
-    dependencies:
-      '@shikijs/types': 4.6.0
-
-  '@shikijs/types@4.6.0':
-    dependencies:
-      '@shikijs/vscode-textmate': 10.1.0
-      '@types/hast': 3.0.5
-
-  '@shikijs/vscode-textmate@10.1.0': {}
 
   '@sindresorhus/base62@1.0.0': {}
 
