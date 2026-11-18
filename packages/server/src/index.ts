@@ -8,7 +8,7 @@ import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
-import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
+import { DEFAULT_DEBUG_PORT } from '@flash-debug/config/constants'
 
 const require = createRequire(import.meta.url)
 type NitroProcess = ChildProcess & { stdout: Readable, stderr: Readable }

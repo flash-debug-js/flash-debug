@@ -6,6 +6,7 @@ import { createAdbAdapter } from '@flash-debug/logger-adb'
 import { createHdcAdapter } from '@flash-debug/logger-hdc'
 import { cac } from 'cac'
 import { createRuntimeConsole } from './runtime-console'
+import { FLASH_DEBUG_CLI_VERSION } from './version'
 
 export async function runCli(argv: string[] = process.argv): Promise<void> {
   const cli = cac('flash-debug')
@@ -63,7 +64,13 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
       config,
       cli: options,
     })
-    const client = await resolveClient(options)
+    const client = await resolveClient({
+      ...options,
+      adapter: options.adapter ?? config.clients?.adapter,
+      device: options.device ?? config.clients?.device,
+      adbPath: options.adbPath ?? config.clients?.adbPath,
+      hdcPath: options.hdcPath ?? config.clients?.hdcPath,
+    })
     const runtimeConsole = createRuntimeConsole()
     const runtime = await startDebugRuntime({
       host: resolvedOptions.host,
@@ -90,7 +97,7 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
   }
 
   cli.help()
-  cli.version('0.1.0')
+  cli.version(FLASH_DEBUG_CLI_VERSION)
   cli.parse(argv)
   await actionPromise
 }

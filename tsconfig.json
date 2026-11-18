@@ -9,6 +9,7 @@
       "@flash-debug/client": ["./packages/client/src/index.ts"],
       "@flash-debug/logger": ["./packages/logger/src/index.ts"],
       "@flash-debug/config": ["./packages/config/src/index.ts"],
+      "@flash-debug/config/constants": ["./packages/config/src/constants.ts"],
       "@flash-debug/core": ["./packages/core/src/index.ts"],
       "@flash-debug/logger-adb": ["./packages/logger-adb/src/index.ts"],
       "@flash-debug/logger-hdc": ["./packages/logger-hdc/src/index.ts"],

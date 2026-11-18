@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DebugLogLevel, DebugLogSource, DebugLogType } from '@flash-debug/types'
-import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
+import { DEFAULT_DEBUG_PORT } from '@flash-debug/config/constants'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import type { AutoConfig, ConnectionConfig, ManualEventInput, RunnerSnapshot, SilkwormScenario } from './runner/types'
 import IconGlyph from './IconGlyph.vue'

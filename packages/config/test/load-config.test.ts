@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { loadFlashDebugConfig, resolveFlashDebugOptions } from '../src'
+import { loadFlashDebugConfig, resolveFlashDebugOptions, validateFlashDebugConfig } from '../src'
 
 describe('loadFlashDebugConfig', () => {
   it('loads JSON configuration from the working directory', async () => {
@@ -59,5 +59,12 @@ describe('loadFlashDebugConfig', () => {
       zone: 'env.example.com',
       subdomain: 'env-{rand:6}',
     })
+  })
+
+  it('rejects unknown configuration fields', () => {
+    expect(() => validateFlashDebugConfig({
+      tunnel: { mode: 'quick' },
+      typo: true,
+    })).toThrow('Unknown configuration field: config.typo')
   })
 })

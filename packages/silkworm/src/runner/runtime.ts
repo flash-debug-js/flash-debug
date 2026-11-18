@@ -12,7 +12,7 @@ import type {
   SendAttempt,
   SendMode,
 } from './types'
-import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
+import { DEFAULT_DEBUG_PORT } from '@flash-debug/config/constants'
 import { createScenarioRecord } from '../scenarios'
 import { SeededRandom } from './random'
 import { sendBatch, testTarget, TransportError } from './transport'
