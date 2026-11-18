@@ -26,8 +26,13 @@ class LogStore {
       this.ids.add(record.id)
       this.records.push(event)
       accepted += 1
-      for (const listener of this.listeners) {
-        listener(event)
+      for (const listener of [...this.listeners]) {
+        try {
+          listener(event)
+        }
+        catch {
+          this.listeners.delete(listener)
+        }
       }
     }
 
@@ -72,8 +77,17 @@ class LogStore {
     return { deleted, cursor: this.cursor }
   }
 
-  subscribe(listener: Listener): () => void {
+  subscribe(listener: Listener, afterCursor = 0): () => void {
     this.listeners.add(listener)
+    for (const event of this.list(afterCursor)) {
+      try {
+        listener(event)
+      }
+      catch {
+        this.listeners.delete(listener)
+        break
+      }
+    }
     return () => this.listeners.delete(listener)
   }
 

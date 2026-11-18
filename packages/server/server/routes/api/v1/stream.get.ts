@@ -11,6 +11,10 @@ export default defineHandler((event) => {
   let unsubscribe = () => {}
   let heartbeat: ReturnType<typeof setInterval> | undefined
   let closed = false
+  let closeStream = () => {}
+  const queryCursor = parseCursor(event.url.searchParams.get('cursor'))
+  const headerCursor = parseCursor(event.req.headers.get('last-event-id'))
+  const afterCursor = Math.max(queryCursor, headerCursor)
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -30,16 +34,28 @@ export default defineHandler((event) => {
           // The request may already have been cancelled by the client.
         }
       }
+      closeStream = close
 
       unsubscribe = logStore.subscribe((logEvent) => {
-        if (!closed) {
+        if (closed) {
+          return
+        }
+        try {
           controller.enqueue(encodeEvent(logEvent))
         }
-      })
+        catch {
+          close()
+        }
+      }, afterCursor)
 
       heartbeat = setInterval(() => {
         if (!closed) {
-          controller.enqueue(encoder.encode(': heartbeat\n\n'))
+          try {
+            controller.enqueue(encoder.encode(': heartbeat\n\n'))
+          }
+          catch {
+            close()
+          }
         }
       }, 15_000)
 
@@ -47,11 +63,7 @@ export default defineHandler((event) => {
       controller.enqueue(encoder.encode(': connected\n\n'))
     },
     cancel() {
-      unsubscribe()
-      if (heartbeat) {
-        clearInterval(heartbeat)
-      }
-      closed = true
+      closeStream()
     },
   })
 
@@ -64,3 +76,14 @@ export default defineHandler((event) => {
     },
   })
 })
+
+function parseCursor(value: string | null): number {
+  if (!value) {
+    return 0
+  }
+  const cursor = Number(value)
+  if (!Number.isSafeInteger(cursor) || cursor <= 0) {
+    return 0
+  }
+  return cursor
+}

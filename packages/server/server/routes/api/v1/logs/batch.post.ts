@@ -2,8 +2,10 @@ import type { DebugLogRecord } from '@flash-debug/types'
 import type { HTTPEvent } from 'h3'
 import process from 'node:process'
 import { defineHandler, HTTPError } from 'nitro'
-import { readBody } from 'nitro/h3'
+import { assertBodySize, readBody } from 'nitro/h3'
 import { logStore } from '../../../../store'
+
+const MAX_BATCH_BYTES = 1024 * 1024
 
 interface BatchBody {
   protocolVersion?: number
@@ -17,6 +19,7 @@ interface BatchBody {
 
 export default defineHandler(async (event) => {
   verifyIngestToken(event)
+  assertBodySize(event, MAX_BATCH_BYTES)
   const body = await readBody<BatchBody>(event)
   if (!body || typeof body !== 'object' || !Array.isArray(body.items) || body.items.length === 0) {
     throw new HTTPError('items must be a non-empty array', { status: 400 })
