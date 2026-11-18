@@ -15,8 +15,8 @@
     "url": "https://github.com/flash-debug-js/flash-debug/issues"
   },
   "files": [
-    "dist",
     ".output",
+    "dist",
     "index.html",
     "nitro.config.ts",
     "public",
