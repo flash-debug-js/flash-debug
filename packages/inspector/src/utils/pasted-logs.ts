@@ -15,6 +15,7 @@ const SOURCES: readonly DebugLogSource[] = [
   'server',
   'unknown',
 ]
+export const MAX_PASTED_LOGS = 5000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -87,7 +88,11 @@ function timestampValue(record: DebugLogRecord): number {
 }
 
 /** Merge by id and keep pasted logs in chronological order from old to new. */
-export function mergePastedLogs(existing: readonly DebugLogRecord[], incoming: readonly DebugLogRecord[]): DebugLogRecord[] {
+export function mergePastedLogs(
+  existing: readonly DebugLogRecord[],
+  incoming: readonly DebugLogRecord[],
+  maxRecords = MAX_PASTED_LOGS,
+): DebugLogRecord[] {
   const records = new Map<string, DebugLogRecord>()
   existing.forEach(record => records.set(record.id, record))
   incoming.forEach(record => records.set(record.id, record))
@@ -96,5 +101,8 @@ export function mergePastedLogs(existing: readonly DebugLogRecord[], incoming: r
     ...records.values(),
   ]
   const order = new Map(merged.map((record, index) => [record.id, index]))
-  return merged.sort((left, right) => timestampValue(left) - timestampValue(right) || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0))
+  merged.sort((left, right) => timestampValue(left) - timestampValue(right) || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0))
+  return merged.length > maxRecords
+    ? merged.slice(-maxRecords)
+    : merged
 }

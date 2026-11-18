@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { DebugFilterDefinition, DebugFilterValues, DebugLogLevel, DebugLogRecord, DebugSessionSnapshot } from '@flash-debug/types'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import type { DebugFilterDefinition, DebugLogLevel, DebugLogRecord, DebugSessionSnapshot } from '@flash-debug/types'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import HelpDialog from './HelpDialog.vue'
 import LogDetailModal from './LogDetailModal.vue'
@@ -10,9 +10,11 @@ import IconGlyph from './components/IconGlyph.vue'
 import type { IconName } from './components/IconGlyph.vue'
 import VirtualList from './components/VirtualList.vue'
 import { useLoadingQueue } from './utils/loading-queue'
+import { useLogStream } from './utils/log-stream'
 import { usePersistentState } from './utils/persistent-state'
 import { mergePastedLogs, parsePastedLogs } from './utils/pasted-logs'
 import { useRangeSelection } from './utils/range-selection'
+import { useTimedMessage } from './utils/timed-message'
 import { createLogWorkerClient } from './worker/log-worker-client'
 import type { LogListItem, LogSnapshot } from './worker/log-worker-types'
 import { createEmptyLogSnapshot, MAX_LIST_MESSAGE_LENGTH } from './worker/log-worker-types'
@@ -29,26 +31,25 @@ const query = ref('')
 const levelOptions: readonly DebugLogLevel[] = ['debug', 'info', 'warning', 'error']
 const selectedLevels = usePersistentState<DebugLogLevel[]>('levels', [])
 const source = usePersistentState<'all' | DebugLogRecord['source']>('source', 'all')
-const connected = ref(false)
 const error = ref('')
-const session = shallowRef<DebugSessionSnapshot | null>(null)
-const captureFilters = reactive<DebugFilterValues>({})
 const applyingCaptureFilters = ref(false)
 const autoScroll = usePersistentState('auto-scroll', true)
 const compactRows = usePersistentState('compact-rows', false)
-const copyNotice = ref('')
 const clearLogsDialogOpen = ref(false)
 const helpDialogOpen = ref(false)
 const qrDialogOpen = ref(false)
 const mobileMenuOpen = ref(false)
 const currentOrigin = ref('')
-const topMessage = ref('')
 const searchInputRef = ref<HTMLInputElement>()
 const loadingQueue = useLoadingQueue()
 const loadingMessage = loadingQueue.currentMessage
 const loadingItems = loadingQueue.items
 const loadingMenuOpen = ref(false)
 const logListRef = ref<{ scrollToEnd: () => void } | null>(null)
+const copyNoticeMessage = useTimedMessage()
+const topMessageState = useTimedMessage()
+const copyNotice = copyNoticeMessage.message
+const topMessage = topMessageState.message
 const workerClient = createLogWorkerClient({
   onError: (cause) => {
     error.value = cause instanceof Error ? cause.message : String(cause)
@@ -57,9 +58,16 @@ const workerClient = createLogWorkerClient({
 const unsubscribeWorker = workerClient.subscribe((snapshot) => {
   logSnapshot.value = snapshot
 })
-let eventSource: EventSource | undefined
-let copyNoticeTimer: ReturnType<typeof setTimeout> | undefined
-let topMessageTimer: ReturnType<typeof setTimeout> | undefined
+let filterTimer: ReturnType<typeof setTimeout> | undefined
+const logStream = useLogStream(workerClient, (cause) => {
+  error.value = cause instanceof Error ? cause.message : String(cause)
+})
+const { captureFilters, connected, session } = logStream
+watch(connected, (value) => {
+  if (value) {
+    error.value = ''
+  }
+})
 
 const filteredLogs = computed(() => logSnapshot.value.items)
 const visiblePastedLogs = computed(() => pastedLogs.value.filter(matchesViewFilter))
@@ -141,10 +149,6 @@ function matchesViewFilter(record: DebugLogRecord): boolean {
     .includes(normalizedQuery)
 }
 
-function addRecord(record: DebugLogRecord): void {
-  workerClient.enqueue(record)
-}
-
 function levelIcon(value: 'all' | DebugLogLevel): IconName {
   switch (value) {
     case 'debug':
@@ -183,46 +187,20 @@ watch(sourceOptions, (items) => {
 })
 
 watch([query, selectedLevels, source], ([nextQuery, nextLevels, nextSource]) => {
-  void workerClient.setFilter({
-    query: nextQuery,
-    levels: [...nextLevels],
-    source: nextSource,
-  }).catch((cause: unknown) => {
-    error.value = cause instanceof Error ? cause.message : String(cause)
-  })
+  if (filterTimer) {
+    clearTimeout(filterTimer)
+  }
+  const apply = () => {
+    void workerClient.setFilter({
+      query: nextQuery,
+      levels: [...nextLevels],
+      source: nextSource,
+    }).catch((cause: unknown) => {
+      error.value = cause instanceof Error ? cause.message : String(cause)
+    })
+  }
+  filterTimer = setTimeout(apply, 80)
 }, { immediate: true })
-
-async function loadHistory(): Promise<void> {
-  try {
-    const response = await fetch('/api/v1/logs?limit=2000')
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
-    const payload = await response.json() as { items?: Array<{ record: DebugLogRecord }> }
-    const records = (payload.items ?? []).map(item => item.record)
-    if (records.length) {
-      await workerClient.appendBatch(records)
-    }
-  }
-  catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause)
-  }
-}
-
-async function loadSession(): Promise<void> {
-  try {
-    const response = await fetch('/api/v1/session')
-    if (!response.ok) {
-      return
-    }
-    const nextSession = await response.json() as DebugSessionSnapshot
-    session.value = nextSession
-    Object.assign(captureFilters, nextSession.filters)
-  }
-  catch {
-    // A session endpoint is optional for viewers without an active client adapter.
-  }
-}
 
 async function updateCaptureFilter(id: string, value: unknown): Promise<void> {
   const previous = { ...captureFilters }
@@ -266,22 +244,6 @@ function multiSelectFilterValue(event: Event): string[] {
 
 function filterValue(definition: DebugFilterDefinition): unknown {
   return captureFilters[definition.id] ?? definition.defaultValue ?? ''
-}
-
-function connectStream(): void {
-  eventSource = new EventSource('/api/v1/stream')
-  eventSource.addEventListener('open', () => {
-    connected.value = true
-    error.value = ''
-  })
-  eventSource.addEventListener('log', (event) => {
-    const payload = JSON.parse((event as MessageEvent).data) as { record: DebugLogRecord }
-    addRecord(payload.record)
-  })
-  eventSource.addEventListener('error', () => {
-    connected.value = false
-    error.value = 'Connection interrupted · retrying'
-  })
 }
 
 function toggleAutoScroll(): void {
@@ -422,14 +384,7 @@ async function copySelectedLogs(): Promise<void> {
 
     const raw = JSON.stringify(records.length === 1 ? records[0] : records, null, 2)
     await writeClipboard(raw)
-    copyNotice.value = records.length === 1 ? 'Copied raw JSON' : `Copied ${records.length} logs as JSON`
-    if (copyNoticeTimer) {
-      clearTimeout(copyNoticeTimer)
-    }
-    copyNoticeTimer = setTimeout(() => {
-      copyNotice.value = ''
-      copyNoticeTimer = undefined
-    }, 1800)
+    copyNoticeMessage.show(records.length === 1 ? 'Copied raw JSON' : `Copied ${records.length} logs as JSON`)
   }
   catch (cause) {
     error.value = cause instanceof Error ? cause.message : String(cause)
@@ -443,14 +398,7 @@ async function copyQrUrl(): Promise<void> {
 
   try {
     await writeClipboard(currentOrigin.value)
-    topMessage.value = 'URL copied'
-    if (topMessageTimer) {
-      clearTimeout(topMessageTimer)
-    }
-    topMessageTimer = setTimeout(() => {
-      topMessage.value = ''
-      topMessageTimer = undefined
-    }, 1800)
+    topMessageState.show('URL copied')
   }
   catch (cause) {
     error.value = cause instanceof Error ? cause.message : String(cause)
@@ -471,14 +419,7 @@ function handlePaste(event: ClipboardEvent): void {
   pastedLogs.value = mergePastedLogs(pastedLogs.value, records)
   logViewMode.value = 'pasted'
   resetLogSelection()
-  copyNotice.value = `Pasted ${records.length} logs`
-  if (copyNoticeTimer) {
-    clearTimeout(copyNoticeTimer)
-  }
-  copyNoticeTimer = setTimeout(() => {
-    copyNotice.value = ''
-    copyNoticeTimer = undefined
-  }, 1800)
+  copyNoticeMessage.show(`Pasted ${records.length} logs`)
   void nextTick(() => logListRef.value?.scrollToEnd())
 }
 
@@ -580,16 +521,12 @@ onMounted(() => {
   currentOrigin.value = window.location.origin
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('paste', handlePaste)
-  void Promise.all([loadSession(), loadHistory()]).then(connectStream)
+  logStream.start()
 })
 
 onBeforeUnmount(() => {
-  eventSource?.close()
-  if (copyNoticeTimer) {
-    clearTimeout(copyNoticeTimer)
-  }
-  if (topMessageTimer) {
-    clearTimeout(topMessageTimer)
+  if (filterTimer) {
+    clearTimeout(filterTimer)
   }
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('paste', handlePaste)

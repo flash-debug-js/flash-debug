@@ -13,7 +13,7 @@ const orderedIds: string[] = []
 const sourceCounts = new Map<DebugLogSource, number>()
 const levelCounts = new Map<DebugLogLevel, number>()
 const typeCounts = new Map<DebugLogType, number>()
-const filterOptions = new Map<string, Set<string>>()
+const filterOptions = new Map<string, Map<string, number>>()
 let orderStart = 0
 let filter: LogFilter = {
   query: '',
@@ -70,9 +70,31 @@ function addFilterOption(key: string, value: unknown): void {
   if (value === undefined || value === null || String(value).length === 0) {
     return
   }
-  const values = filterOptions.get(key) ?? new Set<string>()
-  values.add(String(value))
+  const values = filterOptions.get(key) ?? new Map<string, number>()
+  const normalized = String(value)
+  values.set(normalized, (values.get(normalized) ?? 0) + 1)
   filterOptions.set(key, values)
+}
+
+function removeFilterOption(key: string, value: unknown): void {
+  if (value === undefined || value === null || String(value).length === 0) {
+    return
+  }
+  const values = filterOptions.get(key)
+  if (!values) {
+    return
+  }
+  const normalized = String(value)
+  const count = values.get(normalized) ?? 0
+  if (count <= 1) {
+    values.delete(normalized)
+  }
+  else {
+    values.set(normalized, count - 1)
+  }
+  if (!values.size) {
+    filterOptions.delete(key)
+  }
 }
 
 function readAttribute(record: DebugLogRecord, key: string): unknown {
@@ -89,6 +111,10 @@ function removeRecord(id: string): void {
   decrementCount(sourceCounts, stored.record.source)
   decrementCount(levelCounts, stored.record.level)
   decrementCount(typeCounts, stored.record.type)
+  removeFilterOption('tag', stored.record.tag)
+  removeFilterOption('deviceId', stored.record.deviceId)
+  removeFilterOption('domain', readAttribute(stored.record, 'domain'))
+  removeFilterOption('pid', readAttribute(stored.record, 'pid'))
 }
 
 function trimRecords(): void {
@@ -127,6 +153,16 @@ function toCountItems<T extends string>(counts: Map<T, number>): Array<{ value: 
   return items
 }
 
+function toFilterOptions(): Record<string, string[]> {
+  const result: Record<string, string[]> = {}
+  for (const [key, values] of filterOptions) {
+    const options = Array.from(values.keys())
+    options.sort()
+    result[key] = options
+  }
+  return result
+}
+
 function getSnapshot(): LogSnapshot {
   const query = filter.query.trim().toLowerCase()
   const items: LogListItem[] = []
@@ -163,14 +199,7 @@ function getSnapshot(): LogSnapshot {
     sources: toCountItems(sourceCounts),
     levels: toCountItems(levelCounts),
     types: toCountItems(typeCounts),
-    filterOptions: Object.fromEntries(
-      [
-        ...filterOptions.entries(),
-      ].map(([key, values]) => [
-        key,
-        [...values].sort(),
-      ]),
-    ),
+    filterOptions: toFilterOptions(),
   }
 }
 

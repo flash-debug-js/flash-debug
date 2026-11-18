@@ -63,11 +63,26 @@ async function startEditorLoading(): Promise<void> {
   sendContent()
 }
 
-watch(() => props.record, (record) => {
+function retryEditor(): void {
+  editorReady.value = false
   editorError.value = ''
+  hasOpened.value = false
+  void nextTick(() => {
+    void startEditorLoading()
+  })
+}
+
+watch(() => props.record, (record) => {
   if (!record) {
+    if (editorError.value) {
+      hasOpened.value = false
+      editorReady.value = false
+    }
+    editorError.value = ''
     return
   }
+
+  editorError.value = ''
 
   if (editorReady.value) {
     sendContent()
@@ -121,7 +136,10 @@ function copyContent(): void {
 
       <div class="detail-editor">
         <pre v-if="record" class="detail-fallback" :class="{ 'is-hidden': editorReady }">{{ formattedContent(record) }}</pre>
-        <div v-if="editorError" class="editor-error">Unable to load Monaco: {{ editorError }}</div>
+        <div v-if="editorError" class="editor-error">
+          <span>Unable to load Monaco: {{ editorError }}</span>
+          <button type="button" class="copy-button" @click="retryEditor">Retry</button>
+        </div>
         <iframe v-if="hasOpened" ref="editorFrame" class="detail-editor-frame" :class="{ 'is-hidden': !editorReady || !!editorError }" src="/monaco.html" title="Read only log editor" @load="sendContent" />
       </div>
 
