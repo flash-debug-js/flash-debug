@@ -1,6 +1,6 @@
 import type { DebugClientAdapter } from '@flash-debug/client'
 import process from 'node:process'
-import { DEFAULT_DEBUG_PORT } from '@flash-debug/config'
+import { loadFlashDebugConfig, resolveFlashDebugOptions } from '@flash-debug/config'
 import { startDebugRuntime } from '@flash-debug/core'
 import { createAdbAdapter } from '@flash-debug/logger-adb'
 import { createHdcAdapter } from '@flash-debug/logger-hdc'
@@ -14,10 +14,10 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
   cli
     .command('[root]', 'Start the Flash Debug Inspector')
     .option('--env-file <path>', 'Load environment variables from a file, defaults to cwd/.env')
-    .option('--port <port>', 'Nitro port', { default: DEFAULT_DEBUG_PORT })
-    .option('--host <host>', 'Nitro host', { default: '127.0.0.1' })
+    .option('--port <port>', 'Nitro port')
+    .option('--host <host>', 'Nitro host')
     .option('--no-tunnel', 'Start only the local Inspector')
-    .option('--mode <mode>', 'Tunnel mode: quick or named', { default: 'quick' })
+    .option('--mode <mode>', 'Tunnel mode: quick or named')
     .option('--subdomain <pattern>', 'Named tunnel subdomain template such as fd-{rand:4}')
     .option('--zone <zone>', 'Cloudflare DNS zone')
     .option('--adapter <adapter>', 'Log adapter: adb or hdc')
@@ -54,16 +54,26 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
     adbPath?: string
     hdcPath?: string
   }): Promise<void> {
+    const loaded = await loadFlashDebugConfig({
+      cwd: process.cwd(),
+      envFile: options.envFile,
+    })
+    const config = loaded.config
+    const resolvedOptions = resolveFlashDebugOptions({
+      config,
+      cli: options,
+    })
     const client = await resolveClient(options)
     const runtimeConsole = createRuntimeConsole()
     const runtime = await startDebugRuntime({
-      host: options.host,
-      port: Number(options.port ?? DEFAULT_DEBUG_PORT),
-      tunnel: options.tunnel,
-      mode: options.mode,
+      host: resolvedOptions.host,
+      port: resolvedOptions.port,
+      tunnel: resolvedOptions.tunnel,
+      mode: resolvedOptions.mode,
       envFile: options.envFile,
-      subdomain: options.subdomain,
-      zone: options.zone,
+      subdomain: resolvedOptions.subdomain,
+      zone: resolvedOptions.zone,
+      cloudflaredPath: resolvedOptions.cloudflaredPath,
       client,
       onLog: runtimeConsole.writeLog,
     })

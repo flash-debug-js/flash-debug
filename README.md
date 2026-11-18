@@ -19,6 +19,52 @@ packages/config        # flash-debug.ts 配置契约
 
 `flash-debug` 会启动本地 Nitro 服务，再通过 `@flash-nexus/sdk` 建立公网 Tunnel 并按配置管理 DNS。ADB、Flutter 日志和未来的 iOS/模拟器来源都统一转换为 `@flash-debug/types` 中的日志事件。
 
+## 配置文件
+
+CLI 会从当前目录读取 `flash-debug.config.ts`、`flash-debug.config.mjs` 或
+`flash-debug.config.json`，并默认读取当前目录的 `.env`。JSON 配置不需要
+`defineConfig`，例如：
+
+```json
+{
+  "tunnel": {
+    "mode": "named",
+    "zone": "example.com",
+    "subdomain": "fd-{rand:4}"
+  }
+}
+```
+
+启动时经常变化的参数也可以放到环境变量中。环境变量优先于配置文件：
+
+```env
+FLASH_DEBUG_MODE=named
+FLASH_DEBUG_ZONE=example.com
+FLASH_DEBUG_SUBDOMAIN=fd-{rand:4}
+FLASH_DEBUG_PORT=4517
+FLASH_DEBUG_HOST=127.0.0.1
+```
+
+`FLASH_DEBUG_SUB_DOMAIN` 也可以作为 `FLASH_DEBUG_SUBDOMAIN` 的兼容写法。
+
+`{rand:4}` 会在每次启动时生成新的四位临时子域名。`zone` 是 DNS 域名，
+Cloudflare 的 API Token、Account ID 和可选的 Zone ID 放在 `.env` 中：
+
+```env
+CLOUDFLARE_API_TOKEN=...
+CLOUDFLARE_ACCOUNT_ID=...
+CLOUDFLARE_ZONE_ID=...
+```
+
+进入配置目录后可以直接运行：
+
+```bash
+npx flash-debug
+```
+
+CLI 参数会覆盖配置文件中的同名选项。需要只启动本地 Inspector 时使用
+`flash-debug --no-tunnel`。
+
 ## 设备日志调试
 
 Android 使用 ADB 适配器：

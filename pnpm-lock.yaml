@@ -224,7 +224,14 @@ importers:
         specifier: workspace:*
         version: link:../types
 
-  packages/config: {}
+  packages/config:
+    dependencies:
+      c12:
+        specifier: ^3.3.4
+        version: 3.3.4
+      jiti:
+        specifier: ^2.7.0
+        version: 2.7.0
 
   packages/core:
     dependencies:
