@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { resolveFlashNexusEnvironment } from '@flash-nexus/config/environment'
 import { loadConfig } from 'c12'
 import { createJiti } from 'jiti'
 import { DEFAULT_DEBUG_PORT } from './constants'
@@ -138,7 +139,8 @@ export function resolveFlashDebugOptions(input: {
 }): ResolvedFlashDebugOptions {
   const cli = input.cli ?? {}
   const env = input.env ?? process.env
-  const mode = cli.mode ?? envValue(env, 'FLASH_DEBUG_MODE') ?? input.config.tunnel?.mode ?? 'quick'
+  const environment = resolveFlashNexusEnvironment(env, 'debug')
+  const mode = cli.mode ?? environment.mode ?? input.config.tunnel?.mode ?? 'quick'
   if (mode !== 'quick' && mode !== 'named')
     throw new TypeError(`Invalid Flash Debug tunnel mode: ${mode}`)
 
@@ -153,10 +155,10 @@ export function resolveFlashDebugOptions(input: {
     tunnel: cli.tunnel ?? true,
     mode,
     subdomain: cli.subdomain
-      ?? envValue(env, 'FLASH_DEBUG_SUBDOMAIN', 'FLASH_DEBUG_SUB_DOMAIN')
+      ?? environment.subdomain
       ?? input.config.tunnel?.subdomain,
-    zone: cli.zone ?? envValue(env, 'FLASH_DEBUG_ZONE') ?? input.config.tunnel?.zone,
-    cloudflaredPath: envValue(env, 'FLASH_DEBUG_CLOUDFLARED_PATH')
+    zone: cli.zone ?? environment.zone ?? input.config.tunnel?.zone,
+    cloudflaredPath: environment.cloudflaredPath
       ?? input.config.tunnel?.cloudflaredPath,
   }
 }

@@ -61,6 +61,23 @@ describe('loadFlashDebugConfig', () => {
     })
   })
 
+  it('falls back to the shared Nexus environment values', () => {
+    const resolved = resolveFlashDebugOptions({
+      config: {},
+      env: {
+        FLASH_NEXUS_MODE: 'named',
+        FLASH_NEXUS_ZONE: 'acewill.dev',
+        FLASH_NEXUS_SUBDOMAIN: 'fd-{rand:4}',
+      },
+    })
+
+    expect(resolved).toMatchObject({
+      mode: 'named',
+      zone: 'acewill.dev',
+      subdomain: 'fd-{rand:4}',
+    })
+  })
+
   it('rejects unknown configuration fields', () => {
     expect(() => validateFlashDebugConfig({
       tunnel: { mode: 'quick' },
