@@ -1,39 +1,19 @@
+import { DebugContentFormat, DebugLogLevel, DebugLogRecord, DebugLogType } from "@flash-debug/types";
+export declare const FLASH_DEBUG_SDK_VERSION: string;
 export declare const FLASH_DEBUG_PROTOCOL_VERSION: 1;
 export declare const FLASH_DEBUG_SDK_NAME = "@flash-debug/logger";
-export declare const FLASH_DEBUG_SDK_VERSION = "0.1.0";
 type FetchFunction = typeof globalThis.fetch;
-export type FlashDebugLogLevel = 'debug' | 'info' | 'warning' | 'error';
-export type FlashDebugLogType = string;
-export type FlashDebugContentFormat = 'json' | 'jsonc' | 'jsonl' | 'yaml' | 'ansi' | 'text';
-export interface FlashDebugLogRecord {
-  id: string;
-  timestamp: string;
-  level: FlashDebugLogLevel;
-  type: FlashDebugLogType;
-  message: string;
-  content?: string;
-  contentFormat?: FlashDebugContentFormat;
-  source: string;
-  clientId?: string;
-  tag?: string;
-  deviceId?: string;
-  sessionId?: string;
-  error?: string;
-  stackTrace?: string;
-  errorInfo?: {
-    name?: string;
-    code?: string;
-    message?: string;
-    stack?: string;
-  };
-  attributes?: Record<string, unknown>;
-}
+export type FlashDebugLogLevel = DebugLogLevel;
+export type FlashDebugLogType = DebugLogType;
+export type FlashDebugContentFormat = DebugContentFormat;
+export type FlashDebugLogRecord = DebugLogRecord;
 export interface FlashDebugLogInput {
   level: FlashDebugLogLevel;
   message: string;
   type?: FlashDebugLogType;
   content?: string;
   contentFormat?: FlashDebugContentFormat;
+  metadata?: Record<string, unknown>;
   tag?: string;
   attributes?: Record<string, unknown>;
   error?: unknown;

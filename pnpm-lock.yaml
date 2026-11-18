@@ -298,6 +298,13 @@ importers:
         version: 3.3.14(typescript@6.0.3)
 
   packages/logger:
+    dependencies:
+      '@flash-debug/client':
+        specifier: workspace:*
+        version: link:../client
+      '@flash-debug/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       obuild:
         specifier: ^0.4.45

@@ -1,6 +1,7 @@
+import { createBatchUploader } from "@flash-debug/client";
+const FLASH_DEBUG_SDK_VERSION = "0.3.0";
 const FLASH_DEBUG_PROTOCOL_VERSION = 1;
 const FLASH_DEBUG_SDK_NAME = "@flash-debug/logger";
-const FLASH_DEBUG_SDK_VERSION = "0.1.0";
 var FlashDebugUploadError = class extends Error {
 	statusCode;
 	retryable;
@@ -47,9 +48,7 @@ var FlashDebugLoggerImpl = class {
 	onError;
 	onDrop;
 	customRedact;
-	queue = [];
-	flushTimer;
-	flushPromise;
+	uploader;
 	closed = false;
 	constructor(options) {
 		const baseUrl = options.baseUrl.trim().replace(/\/+$/, "");
@@ -64,7 +63,7 @@ var FlashDebugLoggerImpl = class {
 		this.sessionId = options.sessionId?.trim() || void 0;
 		this.sdk = {
 			name: options.sdk?.name?.trim() || "@flash-debug/logger",
-			version: options.sdk?.version?.trim() || "0.1.0"
+			version: options.sdk?.version?.trim() || FLASH_DEBUG_SDK_VERSION
 		};
 		this.batchSize = positiveInteger(options.batchSize, DEFAULT_BATCH_SIZE);
 		this.flushIntervalMs = nonNegativeInteger(options.flushIntervalMs, DEFAULT_FLUSH_INTERVAL_MS);
@@ -79,9 +78,18 @@ var FlashDebugLoggerImpl = class {
 		this.onError = options.onError;
 		this.onDrop = options.onDrop;
 		this.customRedact = options.redact;
+		this.uploader = createBatchUploader({
+			batchSize: this.batchSize,
+			flushIntervalMs: this.flushIntervalMs,
+			queueLimit: this.queueLimit,
+			requeueOnError: false,
+			sendBatch: (batch) => this.sendBatch(batch),
+			onError: this.onError,
+			onDrop: this.onDrop
+		});
 	}
 	get queueLength() {
-		return this.queue.length;
+		return this.uploader.queueLength;
 	}
 	log(input) {
 		if (this.closed) throw new Error("Flash Debug logger is closed");
@@ -99,6 +107,7 @@ var FlashDebugLoggerImpl = class {
 			...this.deviceId ? { deviceId: this.deviceId } : {},
 			...this.sessionId ? { sessionId: this.sessionId } : {},
 			...input.attributes ? { attributes: input.attributes } : {},
+			...input.metadata ? { metadata: input.metadata } : {},
 			...normalizeError(input.error, input.stackTrace)
 		});
 		this.enqueue(record);
@@ -133,51 +142,21 @@ var FlashDebugLoggerImpl = class {
 		});
 	}
 	flush() {
-		if (this.flushPromise) return this.flushPromise;
-		this.clearFlushTimer();
-		const promise = this.flushQueue().finally(() => {
-			this.flushPromise = void 0;
-		});
-		this.flushPromise = promise;
-		return promise;
+		return this.uploader.flush();
 	}
 	async close() {
 		if (this.closed) return;
 		this.closed = true;
-		this.clearFlushTimer();
 		try {
-			await withTimeout(this.flush(), this.closeTimeoutMs);
+			await withTimeout(this.uploader.close(), this.closeTimeoutMs);
 		} catch (error) {
 			this.onError?.(error);
 		} finally {
-			this.queue.length = 0;
+			this.uploader.close().catch(() => {});
 		}
 	}
 	enqueue(record) {
-		this.queue.push(record);
-		while (this.queue.length > this.queueLimit) {
-			const dropped = this.queue.shift();
-			if (dropped) {
-				const error = /* @__PURE__ */ new Error(`Flash Debug logger queue limit exceeded (${this.queueLimit})`);
-				this.onDrop?.([dropped], error);
-			}
-		}
-		if (this.queue.length >= this.batchSize) {
-			this.flush().catch((error) => this.onError?.(error));
-			return;
-		}
-		this.scheduleFlush();
-	}
-	async flushQueue() {
-		while (this.queue.length > 0) {
-			const batch = this.queue.splice(0, this.batchSize);
-			try {
-				await this.sendBatch(batch);
-			} catch (error) {
-				this.onDrop?.(batch, error);
-				throw error;
-			}
-		}
+		this.uploader.append(record);
 	}
 	async sendBatch(batch) {
 		for (let attempt = 0;; attempt += 1) try {
@@ -223,22 +202,6 @@ var FlashDebugLoggerImpl = class {
 			this.onError?.(error);
 			return redacted;
 		}
-	}
-	scheduleFlush() {
-		if (this.flushTimer || this.flushIntervalMs === 0) {
-			if (this.flushIntervalMs === 0) this.flush().catch((error) => this.onError?.(error));
-			return;
-		}
-		this.flushTimer = setTimeout(() => {
-			this.flushTimer = void 0;
-			this.flush().catch((error) => this.onError?.(error));
-		}, this.flushIntervalMs);
-		this.flushTimer.unref?.();
-	}
-	clearFlushTimer() {
-		if (!this.flushTimer) return;
-		clearTimeout(this.flushTimer);
-		this.flushTimer = void 0;
 	}
 };
 async function createUploadError(response) {

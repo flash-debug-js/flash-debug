@@ -1,36 +1,19 @@
+import type { BatchUploader } from '@flash-debug/client'
+import type { DebugContentFormat, DebugLogLevel, DebugLogRecord, DebugLogType } from '@flash-debug/types'
+import { createBatchUploader } from '@flash-debug/client'
+import { FLASH_DEBUG_SDK_VERSION } from './version'
+
+export { FLASH_DEBUG_SDK_VERSION } from './version'
+
 export const FLASH_DEBUG_PROTOCOL_VERSION = 1 as const
 export const FLASH_DEBUG_SDK_NAME = '@flash-debug/logger'
-export const FLASH_DEBUG_SDK_VERSION = '0.1.0'
 
 type FetchFunction = typeof globalThis.fetch
 
-export type FlashDebugLogLevel = 'debug' | 'info' | 'warning' | 'error'
-export type FlashDebugLogType = string
-export type FlashDebugContentFormat = 'json' | 'jsonc' | 'jsonl' | 'yaml' | 'ansi' | 'text'
-
-export interface FlashDebugLogRecord {
-  id: string
-  timestamp: string
-  level: FlashDebugLogLevel
-  type: FlashDebugLogType
-  message: string
-  content?: string
-  contentFormat?: FlashDebugContentFormat
-  source: string
-  clientId?: string
-  tag?: string
-  deviceId?: string
-  sessionId?: string
-  error?: string
-  stackTrace?: string
-  errorInfo?: {
-    name?: string
-    code?: string
-    message?: string
-    stack?: string
-  }
-  attributes?: Record<string, unknown>
-}
+export type FlashDebugLogLevel = DebugLogLevel
+export type FlashDebugLogType = DebugLogType
+export type FlashDebugContentFormat = DebugContentFormat
+export type FlashDebugLogRecord = DebugLogRecord
 
 export interface FlashDebugLogInput {
   level: FlashDebugLogLevel
@@ -38,6 +21,7 @@ export interface FlashDebugLogInput {
   type?: FlashDebugLogType
   content?: string
   contentFormat?: FlashDebugContentFormat
+  metadata?: Record<string, unknown>
   tag?: string
   attributes?: Record<string, unknown>
   error?: unknown
@@ -151,9 +135,7 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
   private readonly onError?: (error: unknown) => void
   private readonly onDrop?: (records: readonly FlashDebugLogRecord[], error: unknown) => void
   private readonly customRedact?: (record: FlashDebugLogRecord) => FlashDebugLogRecord
-  private readonly queue: FlashDebugLogRecord[] = []
-  private flushTimer: ReturnType<typeof setTimeout> | undefined
-  private flushPromise: Promise<void> | undefined
+  private readonly uploader: BatchUploader<FlashDebugLogRecord>
   private closed = false
 
   constructor(options: FlashDebugLoggerOptions) {
@@ -193,10 +175,19 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
     this.onError = options.onError
     this.onDrop = options.onDrop
     this.customRedact = options.redact
+    this.uploader = createBatchUploader({
+      batchSize: this.batchSize,
+      flushIntervalMs: this.flushIntervalMs,
+      queueLimit: this.queueLimit,
+      requeueOnError: false,
+      sendBatch: batch => this.sendBatch(batch),
+      onError: this.onError,
+      onDrop: this.onDrop,
+    })
   }
 
   get queueLength(): number {
-    return this.queue.length
+    return this.uploader.queueLength
   }
 
   log(input: FlashDebugLogInput): FlashDebugLogRecord {
@@ -230,6 +221,9 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
       ...(input.attributes
         ? { attributes: input.attributes }
         : {}),
+      ...(input.metadata
+        ? { metadata: input.metadata }
+        : {}),
       ...normalizeError(input.error, input.stackTrace),
     })
 
@@ -254,15 +248,7 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
   }
 
   flush(): Promise<void> {
-    if (this.flushPromise) {
-      return this.flushPromise
-    }
-    this.clearFlushTimer()
-    const promise = this.flushQueue().finally(() => {
-      this.flushPromise = undefined
-    })
-    this.flushPromise = promise
-    return promise
+    return this.uploader.flush()
   }
 
   async close(): Promise<void> {
@@ -270,47 +256,20 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
       return
     }
     this.closed = true
-    this.clearFlushTimer()
 
     try {
-      await withTimeout(this.flush(), this.closeTimeoutMs)
+      await withTimeout(this.uploader.close(), this.closeTimeoutMs)
     }
     catch (error) {
       this.onError?.(error)
     }
     finally {
-      this.queue.length = 0
+      this.uploader.close().catch(() => {})
     }
   }
 
   private enqueue(record: FlashDebugLogRecord): void {
-    this.queue.push(record)
-    while (this.queue.length > this.queueLimit) {
-      const dropped = this.queue.shift()
-      if (dropped) {
-        const error = new Error(`Flash Debug logger queue limit exceeded (${this.queueLimit})`)
-        this.onDrop?.([dropped], error)
-      }
-    }
-
-    if (this.queue.length >= this.batchSize) {
-      void this.flush().catch(error => this.onError?.(error))
-      return
-    }
-    this.scheduleFlush()
-  }
-
-  private async flushQueue(): Promise<void> {
-    while (this.queue.length > 0) {
-      const batch = this.queue.splice(0, this.batchSize)
-      try {
-        await this.sendBatch(batch)
-      }
-      catch (error) {
-        this.onDrop?.(batch, error)
-        throw error
-      }
-    }
+    this.uploader.append(record)
   }
 
   private async sendBatch(batch: readonly FlashDebugLogRecord[]): Promise<void> {
@@ -382,28 +341,6 @@ class FlashDebugLoggerImpl implements FlashDebugLogger {
       this.onError?.(error)
       return redacted
     }
-  }
-
-  private scheduleFlush(): void {
-    if (this.flushTimer || this.flushIntervalMs === 0) {
-      if (this.flushIntervalMs === 0) {
-        void this.flush().catch(error => this.onError?.(error))
-      }
-      return
-    }
-    this.flushTimer = setTimeout(() => {
-      this.flushTimer = undefined
-      void this.flush().catch(error => this.onError?.(error))
-    }, this.flushIntervalMs)
-    this.flushTimer.unref?.()
-  }
-
-  private clearFlushTimer(): void {
-    if (!this.flushTimer) {
-      return
-    }
-    clearTimeout(this.flushTimer)
-    this.flushTimer = undefined
   }
 }
 

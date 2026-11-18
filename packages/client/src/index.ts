@@ -1,4 +1,8 @@
 import type { DebugClientAdapter, DebugClientSession, DebugDevice, DebugLogRecord } from '@flash-debug/types'
+import { createBatchUploader } from './batch-uploader'
+
+export { createBatchUploader } from './batch-uploader'
+export type { BatchUploader } from './batch-uploader'
 
 export class ClientRegistry {
   private readonly adapters = new Map<string, DebugClientAdapter>()
@@ -59,63 +63,18 @@ export interface HttpLogSinkOptions {
 /** Batches client adapter records into the local Flash Debug ingest endpoint. */
 export class HttpLogSink implements DebugLogSink {
   private readonly endpoint: string
-  private readonly batchSize: number
-  private readonly flushIntervalMs: number
   private readonly clientId: string
   private readonly request: typeof globalThis.fetch
-  private readonly onError?: (error: unknown) => void
-  private readonly queue: DebugLogRecord[] = []
-  private flushTimer: ReturnType<typeof setTimeout> | undefined
-  private flushPromise: Promise<void> | undefined
-  private closed = false
+  private readonly uploader: ReturnType<typeof createBatchUploader<DebugLogRecord>>
 
   constructor(options: HttpLogSinkOptions) {
     this.endpoint = `${options.baseUrl.trim().replace(/\/+$/, '')}/api/v1/logs/batch`
     this.clientId = options.clientId
-    this.batchSize = Math.max(1, options.batchSize ?? 20)
-    this.flushIntervalMs = Math.max(0, options.flushIntervalMs ?? 250)
     this.request = options.fetch ?? globalThis.fetch
-    this.onError = options.onError
-  }
-
-  append(record: DebugLogRecord): void {
-    if (this.closed) {
-      throw new Error('Debug log sink is closed')
-    }
-    this.queue.push(record)
-    if (this.queue.length >= this.batchSize) {
-      void this.flush().catch(error => this.onError?.(error))
-    }
-    else {
-      this.scheduleFlush()
-    }
-  }
-
-  flush(): Promise<void> {
-    if (this.flushPromise) {
-      return this.flushPromise
-    }
-    this.clearFlushTimer()
-    const promise = this.flushQueue().finally(() => {
-      this.flushPromise = undefined
-    })
-    this.flushPromise = promise
-    return promise
-  }
-
-  async close(): Promise<void> {
-    if (this.closed) {
-      return
-    }
-    this.closed = true
-    this.clearFlushTimer()
-    await this.flush()
-  }
-
-  private async flushQueue(): Promise<void> {
-    while (this.queue.length > 0) {
-      const batch = this.queue.splice(0, this.batchSize)
-      try {
+    this.uploader = createBatchUploader({
+      batchSize: options.batchSize ?? 20,
+      flushIntervalMs: options.flushIntervalMs ?? 250,
+      sendBatch: async (batch) => {
         const response = await this.request(this.endpoint, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -128,34 +87,25 @@ export class HttpLogSink implements DebugLogSink {
         if (!response.ok) {
           throw new Error(`Flash Debug upload failed with HTTP ${response.status}`)
         }
-      }
-      catch (error) {
-        this.queue.unshift(...batch)
-        throw error
-      }
-    }
+      },
+      onError: options.onError,
+    })
   }
 
-  private scheduleFlush(): void {
-    if (this.flushTimer || this.flushIntervalMs === 0) {
-      if (this.flushIntervalMs === 0) {
-        void this.flush().catch(error => this.onError?.(error))
-      }
-      return
-    }
-    this.flushTimer = setTimeout(() => {
-      this.flushTimer = undefined
-      void this.flush().catch(error => this.onError?.(error))
-    }, this.flushIntervalMs)
-    this.flushTimer.unref?.()
+  get queueLength(): number {
+    return this.uploader.queueLength
   }
 
-  private clearFlushTimer(): void {
-    if (!this.flushTimer) {
-      return
-    }
-    clearTimeout(this.flushTimer)
-    this.flushTimer = undefined
+  append(record: DebugLogRecord): void {
+    this.uploader.append(record)
+  }
+
+  flush(): Promise<void> {
+    return this.uploader.flush()
+  }
+
+  close(): Promise<void> {
+    return this.uploader.close()
   }
 }
 

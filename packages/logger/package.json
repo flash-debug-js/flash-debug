@@ -34,6 +34,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@flash-debug/client": "workspace:*",
+    "@flash-debug/types": "workspace:*"
+  },
   "devDependencies": {
     "obuild": "^0.4.45"
   }
