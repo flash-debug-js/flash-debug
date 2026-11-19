@@ -47,6 +47,11 @@ FLASH_DEBUG_HOST=127.0.0.1
 
 `FLASH_DEBUG_SUB_DOMAIN` 也可以作为 `FLASH_DEBUG_SUBDOMAIN` 的兼容写法。
 
+如果同一份 `.env` 要同时供 `flash-nexus` 和 `flash-debug` 使用，可以只设置
+`FLASH_NEXUS_MODE`、`FLASH_NEXUS_ZONE`、`FLASH_NEXUS_SUBDOMAIN`。启动
+`flash-debug` 时，这三个字段分别按 CLI 参数、`FLASH_DEBUG_*`、`FLASH_NEXUS_*`、
+对应的 `FLASH_TUNNEL_*` 或 `FLASH_DNS_*`、配置文件、默认值的顺序取值。
+
 `{rand:4}` 会在每次启动时生成新的四位临时子域名。`zone` 是 DNS 域名，
 Cloudflare 的 API Token、Account ID 和可选的 Zone ID 放在 `.env` 中：
 

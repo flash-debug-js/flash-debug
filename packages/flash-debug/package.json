@@ -11,6 +11,9 @@
     "type": "git",
     "url": "git+https://github.com/flash-debug-js/flash-debug.git"
   },
+  "bugs": {
+    "url": "https://github.com/flash-debug-js/flash-debug/issues"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
