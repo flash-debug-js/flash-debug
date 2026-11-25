@@ -39,7 +39,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@flash-nexus/config": "^0.4.0",
+    "@flash-nexus/config": "^0.4.1",
     "c12": "^3.3.4",
     "jiti": "^2.7.0"
   }

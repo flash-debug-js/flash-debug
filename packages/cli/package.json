@@ -42,6 +42,6 @@
     "@flash-debug/core": "workspace:*",
     "@flash-debug/logger-adb": "workspace:*",
     "@flash-debug/logger-hdc": "workspace:*",
-    "cac": "^7.1.0"
+    "cac": "^7.1.1"
   }
 }
